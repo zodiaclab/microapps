@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Local Plagiarism-aware Rephraser (Demo) - v3</title>
+<style>
+  body{font-family:system-ui,Segoe UI,Roboto,Arial;margin:18px;background:#f5f7fb;color:#111}
+  .wrap{max-width:1100px;margin:0 auto;background:#fff;padding:18px;border-radius:8px;box-shadow:0 6px 20px rgba(30,40,60,0.08)}
+  h1{margin:0 0 12px;font-size:20px}
+  textarea{width:95%;min-height:140px;padding:10px;border:1px solid #ddd;border-radius:6px;resize:vertical;font-size:15px}
+  .row{display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;align-items:center}
+  label{font-size:13px;color:#334}
+  button{padding:10px 14px;border:0;border-radius:6px;background:#1366d6;color:#fff;cursor:pointer}
+  button.secondary{background:#2ea44f}
+  input[type="range"]{width:220px}
+  .panel{margin-top:14px;padding:12px;border-radius:6px;background:#f7fbff;border:1px solid #e6f0ff}
+  .scores{display:flex;gap:12px;align-items:center}
+  .small{font-size:13px;padding:6px 8px}
+  .highlight-old{background:rgba(255,200,90,0.6);padding:2px;border-radius:2px}
+  .highlight-new{background:rgba(150,230,180,0.6);padding:2px;border-radius:2px}
+  .meta{margin-top:8px;font-size:13px;color:#445}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .controls-row{display:flex;gap:8px;flex-wrap:wrap}
+  .summary{margin-top:10px;font-size:13px;color:#333}
+  @media(max-width:800px){.two{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Local Plagiarism-aware Rephraser — Demo (v3)</h1>
+
+    <div class="meta">Paste text (private: stays in your browser). Use <strong>Intensity</strong> and <strong>Shuffle</strong> to control changes. Add comma-separated <strong>keywords</strong> to preserve.</div>
+
+    <div class="two" style="margin-top:12px">
+      <div>
+        <label>Original text</label>
+        <textarea id="inputText" placeholder="Paste your paragraph(s) here...">Students should use reliable sources when doing research. In order to get accurate results, they must cite references and avoid copying verbatim from other authors.</textarea>
+      </div>
+
+      <div>
+        <label>Rephrased output</label>
+        <textarea id="outputText" placeholder="Rephrased output will appear here..." readonly></textarea>
+      </div>
+    </div>
+
+    <div class="row">
+      <label>Intensity</label>
+      <input id="intensity" type="range" min="0" max="100" value="55"/>
+      <label id="intensityLabel">55</label>
+
+      <label style="margin-left:12px">Shuffle</label>
+      <input id="shuffle" type="range" min="0" max="100" value="20"/>
+      <label id="shuffleLabel">20</label>
+    </div>
+
+    <div class="row">
+      <label>Preserve keywords (comma separated)</label>
+      <input id="keywords" style="flex:1" placeholder="e.g., research,cite"/>
+    </div>
+
+    <div class="row controls-row">
+      <button id="rephraseBtn">Rephrase</button>
+      <button id="undoBtn" class="secondary">Undo</button>
+      <button id="exportBtn">Export .txt</button>
+      <button id="pdfBtn">Export PDF (simple)</button>
+    </div>
+
+    <div class="panel">
+      <div class="scores">
+        <div><strong>Jaccard</strong>: <span id="jaccard">-</span></div>
+        <div><strong>Cosine (TF)</strong>: <span id="cosine">-</span></div>
+        <div><strong>Word changes</strong>: <span id="changes">-</span></div>
+      </div>
+      <div class="meta">Similarity metrics give you a quick idea of overlap — lower means more changed (but not necessarily better).</div>
+    </div>
+
+    <div style="margin-top:14px">
+      <strong>Preview highlights:</strong>
+      <div class="meta">Old tokens highlighted in <span style="background:rgba(255,200,90,0.6)">yellow</span> — new tokens in <span style="background:rgba(150,230,180,0.6)">green</span></div>
+      <div id="preview" style="margin-top:10px;padding:10px;border-radius:6px;border:1px dashed #e2e8f0;min-height:70px"></div>
+      <div id="previewNew" style="margin-top:8px;padding:10px;border-radius:6px;border:1px dashed #e2e8f0;min-height:40px"></div>
+    </div>
+
+  </div>
+<script src="https://unpkg.com/compromise@14.12.0/builds/compromise.min.js"></script>
+<script>
+/* =================== Large synonym & phrase bank ===================
+   A practical in-browser dictionary. You may expand or tweak entries.
+   Keys are lowercase; multiword phrases included.
+*/
+const SYN = {
+  // ===== COMMON VERBS =====
+  "make": ["create", "form", "develop", "construct", "generate", "build", "produce", "design"],
+  "use": ["utilize", "employ", "apply", "leverage", "make use of", "take advantage of"],
+  "get": ["obtain", "acquire", "receive", "gain", "attain", "secure"],
+  "give": ["provide", "offer", "grant", "supply", "deliver"],
+  "show": ["demonstrate", "display", "illustrate", "reveal", "indicate", "present"],
+  "help": ["assist", "support", "aid", "facilitate", "guide"],
+  "say": ["state", "mention", "declare", "express", "remark"],
+  "find": ["discover", "locate", "identify", "determine", "detect"],
+  "keep": ["maintain", "preserve", "sustain", "retain", "continue"],
+  "need": ["require", "necessitate", "demand", "call for"],
+  "useful": ["helpful", "beneficial", "advantageous", "practical"],
+  "work": ["operate", "function", "perform", "act"],
+  "try": ["attempt", "endeavor", "strive", "seek"],
+  "improve": ["enhance", "develop", "refine", "upgrade", "strengthen"],
+  "increase": ["boost", "raise", "amplify", "expand", "elevate", "grow"],
+  "reduce": ["decrease", "diminish", "lessen", "minimize", "cut down"],
+  "start": ["begin", "commence", "initiate", "launch"],
+  "stop": ["cease", "halt", "terminate", "end", "discontinue"],
+  "think": ["consider", "reflect", "contemplate", "analyze", "assume"],
+  "showed": ["demonstrated", "displayed", "revealed", "illustrated"],
+  "explain": ["clarify", "elaborate", "describe", "interpret"],
+  "useful": ["beneficial", "valuable", "practical", "advantageous"],
+
+  // ===== ACADEMIC / FORMAL VERBS =====
+  "analyze": ["examine", "evaluate", "study", "assess", "scrutinize"],
+  "demonstrate": ["show", "prove", "illustrate", "exhibit", "confirm"],
+  "suggest": ["imply", "indicate", "propose", "recommend"],
+  "indicate": ["show", "reveal", "denote", "signify"],
+  "illustrate": ["exemplify", "demonstrate", "portray", "depict"],
+  "examine": ["analyze", "investigate", "inspect", "review", "scrutinize"],
+  "define": ["describe", "outline", "specify", "explain"],
+  "develop": ["advance", "enhance", "improve", "evolve"],
+  "include": ["contain", "comprise", "encompass", "involve"],
+  "utilize": ["use", "apply", "employ", "make use of"],
+  "implement": ["execute", "apply", "carry out", "enforce"],
+  "ensure": ["guarantee", "secure", "confirm", "assure"],
+  "achieve": ["accomplish", "attain", "reach", "realize", "fulfill"],
+  "evaluate": ["assess", "appraise", "analyze", "review"],
+  "increase": ["enhance", "amplify", "expand", "augment"],
+  "decrease": ["reduce", "lower", "diminish", "minimize"],
+
+  // ===== ADJECTIVES =====
+  "good": ["great", "excellent", "favorable", "positive", "effective"],
+  "bad": ["poor", "unfavorable", "negative", "ineffective"],
+  "important": ["crucial", "vital", "significant", "essential", "key"],
+  "strong": ["powerful", "robust", "solid", "resilient"],
+  "weak": ["fragile", "feeble", "delicate", "vulnerable"],
+  "accurate": ["precise", "correct", "exact", "true"],
+  "reliable": ["trustworthy", "dependable", "credible"],
+  "consistent": ["steady", "uniform", "coherent", "regular"],
+  "effective": ["efficient", "productive", "successful", "influential"],
+  "efficient": ["productive", "organized", "systematic"],
+  "different": ["varied", "diverse", "distinct", "alternative"],
+  "similar": ["alike", "comparable", "analogous", "related"],
+  "simple": ["basic", "straightforward", "uncomplicated", "clear"],
+  "complex": ["complicated", "intricate", "advanced", "elaborate"],
+  "large": ["big", "huge", "massive", "enormous"],
+  "small": ["tiny", "little", "miniature", "modest"],
+  "fast": ["quick", "rapid", "speedy", "swift"],
+  "slow": ["gradual", "leisurely", "unhurried"],
+  "clear": ["evident", "obvious", "distinct", "transparent"],
+  "logical": ["rational", "reasonable", "coherent"],
+  "innovative": ["creative", "novel", "original", "inventive"],
+
+  // ===== NOUNS =====
+  "result": ["outcome", "finding", "consequence", "effect"],
+  "idea": ["concept", "notion", "thought", "perspective"],
+  "problem": ["issue", "difficulty", "challenge", "concern"],
+  "solution": ["answer", "resolution", "remedy", "fix"],
+  "data": ["information", "details", "facts", "statistics"],
+  "method": ["approach", "technique", "process", "procedure"],
+  "system": ["framework", "structure", "mechanism", "network"],
+  "example": ["instance", "illustration", "case", "sample"],
+  "reason": ["cause", "basis", "justification", "motive"],
+  "purpose": ["objective", "goal", "aim", "intention"],
+  "research": ["study", "investigation", "analysis", "examination"],
+  "students": ["learners", "pupils", "scholars", "trainees"],
+  "teachers": ["instructors", "educators", "mentors", "tutors"],
+  "business": ["company", "enterprise", "organization", "firm"],
+  "vendor": ["supplier", "seller", "provider", "merchant"],
+  "customer": ["client", "consumer", "buyer", "patron"],
+  "author": ["writer", "creator", "composer", "originator"],
+  "book": ["volume", "publication", "text", "manuscript"],
+  "field": ["domain", "area", "discipline", "sector"],
+  "topic": ["subject", "theme", "matter", "focus"],
+
+  // ===== COMMON CONNECTORS / PHRASES =====
+  "in order to": ["to", "so as to", "with the purpose of"],
+  "as a result": ["therefore", "thus", "consequently", "hence"],
+  "in conclusion": ["to sum up", "to conclude", "in summary"],
+  "on the other hand": ["conversely", "alternatively"],
+  "for example": ["for instance", "such as", "to illustrate"],
+  "because": ["since", "as", "due to", "owing to"],
+  "however": ["nevertheless", "yet", "still", "nonetheless"],
+  "therefore": ["thus", "accordingly", "hence"],
+  "also": ["furthermore", "in addition", "moreover"],
+  "firstly": ["initially", "to begin with"],
+  "secondly": ["next", "furthermore", "in addition"],
+  "finally": ["ultimately", "lastly", "in the end"],
+  "in summary": ["overall", "to sum up", "briefly"],
+  "in other words": ["that is to say", "put simply", "to rephrase"],
+
+  // ===== TECHNOLOGY / BUSINESS CONTEXT =====
+  "system": ["platform", "solution", "infrastructure", "architecture"],
+  "software": ["application", "program", "tool", "package"],
+  "hardware": ["equipment", "device", "component", "machine"],
+  "database": ["data store", "repository", "information base"],
+  "project": ["initiative", "plan", "assignment", "undertaking"],
+  "task": ["activity", "operation", "duty", "job"],
+  "plan": ["strategy", "scheme", "proposal", "outline"],
+  "process": ["procedure", "workflow", "sequence"],
+  "goal": ["objective", "aim", "target", "intention"],
+  "team": ["group", "crew", "squad", "unit"],
+  "leader": ["head", "chief", "manager", "supervisor"],
+  "employee": ["worker", "staff member", "associate", "personnel"],
+  "cost": ["expense", "price", "charge", "fee"],
+  "profit": ["gain", "earning", "revenue", "return"],
+
+  // ===== EDUCATION / LEARNING =====
+  "study": ["learn", "review", "analyze", "examine"],
+  "learn": ["understand", "grasp", "comprehend", "acquire knowledge"],
+  "teach": ["educate", "instruct", "train", "guide"],
+  "test": ["exam", "assessment", "evaluation", "quiz"],
+  "result": ["grade", "score", "outcome"],
+  "lesson": ["class", "session", "module", "topic"],
+  "school": ["institution", "academy", "college", "university"],
+  "knowledge": ["understanding", "awareness", "insight", "wisdom"],
+
+  // ===== SMART EXPANSIONS =====
+  "today": ["nowadays", "currently", "at present"],
+  "tomorrow": ["in the future", "later on"],
+  "yesterday": ["previously", "earlier"],
+  "always": ["consistently", "regularly", "constantly"],
+  "sometimes": ["occasionally", "periodically", "now and then"],
+  "often": ["frequently", "commonly", "regularly"],
+  "very": ["extremely", "highly", "greatly", "remarkably"],
+  "really": ["truly", "genuinely", "indeed"],
+  "many": ["numerous", "several", "various", "countless"],
+  "few": ["some", "a handful of", "a small number of"],
+
+  // ===== BONUS: VERB-NOUN LINKED =====
+  "communication": ["interaction", "conversation", "dialogue"],
+  "information": ["data", "details", "knowledge", "content"],
+  "development": ["growth", "advancement", "progress", "evolution"],
+  "education": ["learning", "schooling", "instruction", "training"],
+  "management": ["administration", "supervision", "control", "coordination"],
+  "performance": ["execution", "achievement", "output", "result"],
+  "support": ["assistance", "help", "backing", "guidance"],
+  "innovation": ["creativity", "novelty", "originality"],
+  "technology": ["tech", "innovation", "digital system"],
+  "environment": ["setting", "surroundings", "context", "atmosphere"]
+};
+
+/* =================== Utilities =================== */
+function randChoice(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function escapeHTML(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function normalizeWord(w){ return w.replace(/[^a-z0-9'-]/ig,'').toLowerCase(); }
+function tokenizePreserve(text){ return text.split(/(\s+|[.,!?;:()"'“”—–])/).filter(x=>x!==undefined); }
+function isNumberToken(t){ return /^\d+([.,]\d+)?$/.test(t); }
+
+/* =================== Context-aware replacement ===================
+   - Uses intensity as probability to replace eligible tokens
+   - Preserves keywords (exact match of normalized token)
+   - Avoids replacements in quotes, code-like tokens, numbers
+   - Tries phrase-level replacements first (longer keys)
+*/
+function buildPhraseList() {
+  // derive keys sorted by length (phrases first)
+  return Object.keys(SYN).sort((a,b)=>b.length - a.length);
+}
+const PHRASE_KEYS = buildPhraseList();
+
+function containsQuoteContext(tokens, idx) {
+  // check a few tokens around idx for quotes
+  for (let i = Math.max(0, idx-3); i <= Math.min(tokens.length-1, idx+3); i++) {
+    if (/^["'“”]$/.test(tokens[i])) return true;
+  }
+  return false;
+}
+
+function applyReplacements(text, opts) {
+  const keywords = (opts.keywords||[]).map(k=>k.trim().toLowerCase()).filter(Boolean);
+
+  // Phrase-level replacement (multi-word)
+  let t = text;
+  for (const key of PHRASE_KEYS) {
+    const normKey = key.toLowerCase();
+    if (!normKey.includes(' ')) continue; // only phrases here
+    const rx = new RegExp('\\b' + escapeRegExp(normKey) + '\\b', 'gi');
+    t = t.replace(rx, match => {
+      if (Math.random() * 100 > opts.intensity) return match;
+      if (keywords.includes(normalizeWord(match))) return match;
+      const syns = SYN[normKey] || SYN[normKey.toLowerCase()];
+      if (!syns) return match;
+      const chosen = randChoice(syns);
+      return /^[A-Z]/.test(match) ? capitalize(chosen) : chosen;
+    });
+  }
+
+  // Token-level replacement
+  const tokens = tokenizePreserve(t);
+  const out = tokens.map((tok, i) => {
+    const norm = normalizeWord(tok);
+    if (!norm || isNumberToken(tok) || /^['"“”]$/.test(tok) || keywords.includes(norm)) return tok;
+    if (containsQuoteContext(tokens, i) || /@|\/|\\|:/.test(tok)) return tok;
+
+    if (SYN[norm] && norm.length > 2) {
+      if (Math.random() * 100 <= opts.intensity) {
+        const repl = randChoice(SYN[norm]);
+        return /^[A-Z]/.test(tok) ? capitalize(repl) : repl;
+      }
+    }
+    return tok;
+  });
+
+  return out.join('');
+}
+
+
+/* =================== Basic sentence shuffle (light) =================== */
+function shuffleSentences(text, shufflePercent) {
+  // Split text into sentences (preserve punctuation)
+  const pieces = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
+  if (pieces.length <= 1 || shufflePercent < 5) return text;
+
+  // Determine number of swaps based on shufflePercent
+  const swaps = Math.ceil((shufflePercent / 100) * pieces.length);
+
+  for (let i = 0; i < swaps; i++) {
+    // Pick two random indices that are not the first or last sentence (to preserve intro/conclusion)
+    let a = Math.floor(Math.random() * (pieces.length - 2)) + 1;
+    let b = Math.floor(Math.random() * (pieces.length - 2)) + 1;
+    if (a !== b) [pieces[a], pieces[b]] = [pieces[b], pieces[a]];
+  }
+
+  // Rejoin sentences with single space
+  return pieces.map(s => s.trim()).join(' ').replace(/\s+/g, ' ').trim();
+}
+
+
+/* =================== Similarity metrics =================== */
+function jaccard(a,b){
+  const sa = new Set(tokenizePreserve(a).map(normalizeWord).filter(Boolean));
+  const sb = new Set(tokenizePreserve(b).map(normalizeWord).filter(Boolean));
+  const inter = new Set([...sa].filter(x=>sb.has(x)));
+  const uni = new Set([...sa,...sb]);
+  return uni.size===0?1:(inter.size/uni.size);
+}
+function cosineTF(a,b){
+  const wa = wordFreq(a), wb = wordFreq(b);
+  const keys = new Set([...Object.keys(wa),...Object.keys(wb)]);
+  let dot=0,na=0,nb=0;
+  for (const k of keys){
+    const va = wa[k]||0, vb = wb[k]||0;
+    dot += va*vb; na += va*va; nb += vb*vb;
+  }
+  if (na===0||nb===0) return 0;
+  return dot/(Math.sqrt(na)*Math.sqrt(nb));
+}
+function wordFreq(s){
+  const tokens = tokenizePreserve(s).map(normalizeWord).filter(Boolean);
+  const m={};
+  for (const t of tokens) m[t]=(m[t]||0)+1;
+  return m;
+}
+function countWordChanges(a,b){
+  const sa = tokenizePreserve(a).map(normalizeWord).filter(Boolean);
+  const sb = tokenizePreserve(b).map(normalizeWord).filter(Boolean);
+  let changes = 0;
+  const min = Math.min(sa.length,sb.length);
+  for (let i=0;i<min;i++) if (sa[i]!==sb[i]) changes++;
+  changes += Math.abs(sa.length - sb.length);
+  return changes;
+}
+
+/* =================== Preview diff highlighting (naive) =================== */
+function previewDiff(original, rephrased) {
+  const aTokens = tokenizePreserve(original).map(w=>({w, n:normalizeWord(w)}));
+  const bTokens = tokenizePreserve(rephrased).map(w=>({w, n:normalizeWord(w)}));
+  const setB = new Set(bTokens.map(x=>x.n));
+  const setA = new Set(aTokens.map(x=>x.n));
+  // original with highlights for tokens not in new
+  const origHtml = aTokens.map(tok => {
+    if (!setB.has(tok.n) && tok.n) return `<span class="highlight-old">${escapeHTML(tok.w)}</span>`;
+    return escapeHTML(tok.w);
+  }).join('');
+  // new tokens not in original (additions)
+  const newHtml = bTokens.map(tok => {
+    if (!setA.has(tok.n) && tok.n) return `<span class="highlight-new">${escapeHTML(tok.w)}</span>`;
+    return escapeHTML(tok.w);
+  }).join('');
+  return {origHtml, newHtml};
+}
+
+/* ================ Small grammar & cleanup helpers ================ */
+function capitalize(s){ if (!s) return s; return s.charAt(0).toUpperCase()+s.slice(1); }
+function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+function cleanupText(s){
+  return s.replace(/\s+/g,' ').replace(/\s([,.;:?!)])/g,'$1').replace(/([(\[])\s+/g,'$1').trim();
+}
+
+/* =================== UI wiring =================== */
+const inEl = document.getElementById('inputText');
+const outEl = document.getElementById('outputText');
+const previewEl = document.getElementById('preview');
+const previewNewEl = document.getElementById('previewNew');
+const intensityEl = document.getElementById('intensity');
+const shuffleEl = document.getElementById('shuffle');
+const intensityLabel = document.getElementById('intensityLabel');
+const shuffleLabel = document.getElementById('shuffleLabel');
+const jaccEl = document.getElementById('jaccard');
+const cosEl = document.getElementById('cosine');
+const chgEl = document.getElementById('changes');
+const keywordsEl = document.getElementById('keywords');
+
+let historyStack = [];
+
+intensityEl.addEventListener('input', ()=> intensityLabel.textContent = intensityEl.value);
+shuffleEl.addEventListener('input', ()=> shuffleLabel.textContent = shuffleEl.value);
+
+document.getElementById('rephraseBtn').addEventListener('click', ()=> {
+  const source = inEl.value || '';
+  if (!source.trim()) { alert('Paste some text first'); return; }
+  historyStack.push(outEl.value || source);
+
+  const opts = {
+    intensity: parseInt(intensityEl.value,10),
+    shuffle: parseInt(shuffleEl.value,10),
+    keywords: (keywordsEl.value||'').split(',').map(s=>s.trim()).filter(Boolean)
+  };
+
+  // 1) lightly clean input
+  let step = cleanupText(source);
+
+  // 2) apply phrase & token replacements (context-aware)
+  step = applyReplacements(step, opts);
+
+  // 3) shuffle sentences (light)
+  if (opts.shuffle > 5) step = shuffleSentences(step, opts.shuffle);
+
+  // 4) final cleanup & capitalization
+  step = cleanupText(step);
+  step = step.charAt(0).toUpperCase() + step.slice(1);
+
+  // 5) output
+  outEl.value = step;
+
+  // similarity metrics
+  const j = jaccard(source, step);
+  const c = cosineTF(source, step);
+  const changes = countWordChanges(source, step);
+
+  jaccEl.textContent = j.toFixed(3);
+  cosEl.textContent = c.toFixed(3);
+  chgEl.textContent = changes;
+
+  // preview highlights
+  const diff = previewDiff(source, step);
+  previewEl.innerHTML = `<div style="padding:6px">${diff.origHtml}</div>`;
+  previewNewEl.innerHTML = `<div style="padding:6px">${diff.newHtml}</div>`;
+});
+
+document.getElementById('undoBtn').addEventListener('click', ()=>{
+  if (historyStack.length === 0) { alert('Nothing to undo'); return; }
+  outEl.value = historyStack.pop();
+});
+
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  const text = outEl.value || inEl.value;
+  const blob = new Blob([text], {type:'text/plain;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'rephrased.txt'; a.click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('pdfBtn').addEventListener('click', ()=>{
+  const text = outEl.value || inEl.value;
+  const w = window.open('','_blank','width=700,height=800');
+  w.document.write(`<pre style="white-space:pre-wrap;font-family:Arial">${escapeHTML(text)}</pre>`);
+  w.document.close();
+  w.print();
+});
+
+// Example: POS-aware token replacement
+function posAwareRephrase(text) {
+  const doc = nlp(text); // Create a document
+
+  // Replace only nouns
+  doc.nouns().forEach(term => {
+    const word = term.text();
+    if(SYN[word] && SYN[word].length){
+      // pick a random replacement
+      const repl = SYN[word][Math.floor(Math.random() * SYN[word].length)];
+      term.replaceWith(repl);
+    }
+  });
+
+  // Replace verbs
+  doc.verbs().forEach(term => {
+    const word = term.text();
+    if(SYN[word] && SYN[word].length){
+      const repl = SYN[word][Math.floor(Math.random() * SYN[word].length)];
+      term.replaceWith(repl);
+    }
+  });
+
+  // Replace adjectives
+  doc.adjectives().forEach(term => {
+    const word = term.text();
+    if(SYN[word] && SYN[word].length){
+      const repl = SYN[word][Math.floor(Math.random() * SYN[word].length)];
+      term.replaceWith(repl);
+    }
+  });
+
+  return doc.text();
+}
+
+
+/* ================ End of script ================ */
+</script>
+</body>
+</html>
