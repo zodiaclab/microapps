@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Simple Resume Builder – QR + PDF (Enhanced v4)</title>
+
+<!-- Styles: preserved look-and-feel from your previous version -->
+<style>
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f3f6fa; margin: 0; padding: 20px; }
+  .container { max-width: 1100px; margin: auto; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+  h2 { text-align: center; margin-bottom: 18px; color: #1a73e8; }
+  .layout { display: grid; grid-template-columns: 1fr 420px; gap: 20px; align-items: start; }
+  .form-card { padding: 12px; }
+  .resume-card { padding: 12px; }
+
+  .section { margin-bottom: 16px; border-radius:6px; }
+  .row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px; align-items:center; }
+  .row label { width:150px; font-weight:600; padding-top:6px; color:#333; }
+  .row input, .row textarea, .row select { flex:1; padding:8px; border:1px solid #d0d7de; border-radius:6px; font-size:14px; }
+  textarea { min-height:70px; resize:vertical; }
+
+  .small { padding:8px 10px; font-size:13px; border-radius:6px; }
+  button { padding:10px 14px; border:none; border-radius:6px; background:#1a73e8; color:#fff; cursor:pointer; margin-right:8px; }
+  button.danger { background:#dc3545; }
+  button.alt { background:#28a745; }
+
+  .add { background:#17a2b8; padding:6px 10px; font-size:13px; border-radius:6px; color:#fff; }
+
+  /* resume preview (A4-ish) */
+  .resume-wrapper { width: 100%; min-height: 1120px; background: #fff; color: #222; border:1px solid #ddd; border-radius:6px; overflow:hidden; margin-top: 20px; }
+  .resume-header { background:#1a73e8; color:white; padding:20px; text-align:center; }
+  .resume-header h1 { margin:0; font-size:26px; }
+  .resume-header p { margin:6px 0 0 0; font-size:14px; opacity:0.95; }
+  .resume-body { display:grid; grid-template-columns: 36% 64%; gap:0; }
+  .resume-left { background:#f5f7fa; padding:18px; border-right:1px solid #e6e9ee; min-height:600px; }
+  .resume-right { padding:18px; }
+
+  h4 { color:#1a73e8; margin:10px 0 6px 0; font-size:15px; border-bottom:1px solid #e6eefc; padding-bottom:6px; }
+  .skills span { display:inline-block; background:#e8f0ff; color:#1a73e8; padding:5px 8px; border-radius:6px; margin:4px 4px 0 0; font-size:13px; }
+
+  .controls { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:flex-start; margin-top:14px; }
+
+  /* large scanner overlay */
+  .scanner-overlay { position:fixed; left:0; top:0; right:0; bottom:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.6); z-index:9999; }
+  .scanner-box { background:white; padding:12px; border-radius:10px; width:95%; max-width:760px; box-shadow:0 10px 30px rgba(0,0,0,0.4); text-align:center; }
+  .scanner-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .scanner-close { background:#dc3545; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; }
+
+  #qr-reader { width:100%; max-width:720px; margin:auto; }
+  #qrcode { margin-top:8px; text-align:center; }
+
+  @media (max-width: 920px) {
+    .layout { grid-template-columns: 1fr; }
+    .resume-wrapper { min-height:900px; }
+  }
+</style>
+
+<!-- External libs -->
+<script src="https://unpkg.com/html5-qrcode" ></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h2>Simple Resume Builder – QR + PDF (Enhanced v4)</h2>
+
+    <div class="layout">
+      <!-- LEFT: Form -->
+      <div class="form-card">
+        <div class="section">
+          <h3>Personal Info</h3>
+          <div class="row"><label>Full Name:</label><input id="fullName" type="text"></div>
+          <div class="row"><label>Email:</label><input id="email" type="email"></div>
+          <div class="row"><label>Phone:</label><input id="phone" type="text"></div>
+          <div class="row"><label>Address:</label><input id="address" type="text"></div>
+          <div class="row"><label>Objective:</label><textarea id="objective"></textarea></div>
+        </div>
+
+        <div class="section">
+          <h3>Education</h3>
+          <div id="education-section">
+            <div class="edu-block">
+              <div class="row"><label>Degree:</label><input type="text" class="degree"></div>
+              <div class="row"><label>Institution:</label><input type="text" class="institution"></div>
+              <div class="row"><label>Year:</label><input type="text" class="year"></div>
+              <div class="row"><label>Grade:</label><input type="text" class="grade"></div>
+              <hr>
+            </div>
+          </div>
+          <button class="add" onclick="addEducation()">Add +</button>
+        </div>
+
+        <div class="section">
+          <h3>Work Experience</h3>
+
+          <!-- KEEP first inputs compatible with old single-input flow (retain ids),
+               and wrap them inside work-section as the first block -->
+          <div id="work-section">
+            <div class="work-block">
+              <div class="row"><label>Company:</label><input id="company" type="text" class="company"></div>
+              <div class="row"><label>Role:</label><input id="role" type="text" class="role"></div>
+              <div class="row"><label>Duration:</label><input id="duration" type="text" class="duration"></div>
+              <div class="row"><label>Responsibilities:</label><textarea id="responsibilities" class="responsibilities"></textarea></div>
+              <hr>
+            </div>
+          </div>
+
+          <button class="add" onclick="addWork()">Add +</button>
+        </div>
+
+        <div class="section">
+          <h3>Skills</h3>
+          <div class="row"><label>List (comma separated):</label><input id="skills" type="text" placeholder="eg: JavaScript, ASP.NET, SQL"></div>
+        </div>
+
+        <div class="section">
+          <h3>Projects / Achievements</h3>
+          <div id="project-section">
+            <div class="proj-block">
+              <div class="row"><label>Title:</label><input type="text" class="projectTitle"></div>
+              <div class="row"><label>Description:</label><textarea class="projectDesc"></textarea></div>
+              <hr>
+            </div>
+          </div>
+          <button class="add" onclick="addProject()">Add +</button>
+        </div>
+
+        <div class="section">
+          <h3>Signature</h3>
+          <div class="row"><label>Signature:</label><input id="signature" type="text"></div>
+        </div>
+
+        <div class="controls">
+          <button id="prepareBtn">Prepare Resume</button>
+          <button id="pdfBtn" class="alt small">Generate PDF</button>
+          <button id="printBtn" class="small">Print</button>
+          <button id="resetBtn" class="danger small">Reset</button>
+        </div>
+
+        <hr>
+
+        <div class="controls" style="margin-top:10px;">
+          <button id="generateQRBtn" class="small">Generate QR</button>
+          <button id="downloadQRBtn" class="small">Download QR</button>
+          <button id="scanQRBtn" class="small">Scan QR</button>
+          <button id="importJSONBtn" class="small">Import JSON/Text</button>
+        </div>
+
+        <textarea id="qr-json-area" placeholder="Paste JSON or key=value text here..." style="width:100%;height:110px;margin-top:10px;font-family:monospace;display:none;"></textarea>
+
+      </div>
+
+      <!-- RIGHT: Preview + QR -->
+      <div class="resume-card">
+        <div class="resume-wrapper" id="resume-output" style="display:none;"></div>
+
+        <div id="qrcode" style="margin-top:12px;text-align:center;"></div>
+
+        <p style="font-size:13px;color:#555;margin-top:8px;">Tip: QR supports JSON and simple key=value pairs (semicolon or newline separated).</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scanner overlay -->
+  <div class="scanner-overlay" id="scannerOverlay">
+    <div class="scanner-box">
+      <div class="scanner-header">
+        <div style="font-weight:700;color:#1a73e8">Scan QR — Position camera over QR</div>
+        <button class="scanner-close" id="closeScanner">Close</button>
+      </div>
+      <div id="qr-reader"></div>
+      <div style="margin-top:10px;font-size:13px;color:#444;">Tip: Keep QR centered. Use phone in landscape for better results.</div>
+    </div>
+  </div>
+
+<script>
+/* ------------------------------
+   Utility & Field helpers
+   ------------------------------ */
+function id(x){ return document.getElementById(x); }
+
+/* ------------------------------
+   Dynamic block adders
+   ------------------------------ */
+function addEducation(){
+  const eduBlock = document.createElement('div');
+  eduBlock.className = 'edu-block';
+  eduBlock.innerHTML = `<div class="row"><label>Degree:</label><input type="text" class="degree"></div>
+    <div class="row"><label>Institution:</label><input type="text" class="institution"></div>
+    <div class="row"><label>Year:</label><input type="text" class="year"></div>
+    <div class="row"><label>Grade:</label><input type="text" class="grade"></div><hr>`;
+  id('education-section').appendChild(eduBlock);
+}
+
+function addProject(){
+  const p = document.createElement('div');
+  p.className = 'proj-block';
+  p.innerHTML = `<div class="row"><label>Title:</label><input type="text" class="projectTitle"></div>
+    <div class="row"><label>Description:</label><textarea class="projectDesc"></textarea></div><hr>`;
+  id('project-section').appendChild(p);
+}
+
+/* Add additional work experience block.
+   Note: the FIRST block retains ids (company/role/duration/responsibilities).
+   Additional blocks are added with class-only inputs to keep backward compatibility. */
+function addWork(){
+  const w = document.createElement('div');
+  w.className = 'work-block';
+  w.innerHTML = `<div class="row"><label>Company:</label><input type="text" class="company"></div>
+    <div class="row"><label>Role:</label><input type="text" class="role"></div>
+    <div class="row"><label>Duration:</label><input type="text" class="duration"></div>
+    <div class="row"><label>Responsibilities:</label><textarea class="responsibilities"></textarea></div><hr>`;
+  id('work-section').appendChild(w);
+}
+
+/* ------------------------------
+   Prepare resume preview (unchanged look/feel, but leaves form visible)
+   ------------------------------ */
+function prepareResume(){
+  const n = id('fullName').value || 'Your Name';
+  const e = id('email').value || '';
+  const p = id('phone').value || '';
+  const a = id('address').value || '';
+  const o = id('objective').value || '';
+  const sig = id('signature').value || '';
+  const skillsArr = id('skills').value.split(',').map(s=>s.trim()).filter(Boolean);
+
+  // Education
+  let eduHTML = '';
+  document.querySelectorAll('.edu-block').forEach(b=>{
+    const degree = (b.querySelector('.degree') && b.querySelector('.degree').value) || '';
+    const inst = (b.querySelector('.institution') && b.querySelector('.institution').value) || '';
+    const year = (b.querySelector('.year') && b.querySelector('.year').value) || '';
+    const grade = (b.querySelector('.grade') && b.querySelector('.grade').value) || '';
+    if(degree || inst || year || grade){
+      eduHTML += `<p><strong>${escapeHtml(degree)}</strong><br>${escapeHtml(inst)} (${escapeHtml(year)})<br><em>${escapeHtml(grade)}</em></p>`;
+    }
+  });
+
+  // Work experience: iterate all work-blocks
+  let workHTML = '';
+  document.querySelectorAll('.work-block').forEach(b=>{
+    // support both id-based first block and class-based fields
+    const companyInput = b.querySelector('.company');
+    const roleInput = b.querySelector('.role');
+    const durationInput = b.querySelector('.duration');
+    const respInput = b.querySelector('.responsibilities');
+
+    const comp = companyInput ? companyInput.value : '';
+    const role = roleInput ? roleInput.value : '';
+    const dur = durationInput ? durationInput.value : '';
+    const resp = respInput ? respInput.value : '';
+
+    if(comp || role || dur || resp){
+      workHTML += `<p><strong>${escapeHtml(comp)}</strong> - ${escapeHtml(role)}<br>${escapeHtml(dur)}</p><p>${escapeHtml(resp)}</p>`;
+    }
+  });
+
+  // Projects
+  let projHTML = '';
+  document.querySelectorAll('.proj-block').forEach(b=>{
+    const t = b.querySelector('.projectTitle').value || '';
+    const desc = b.querySelector('.projectDesc').value || '';
+    if(t || desc) projHTML += `<p><strong>${escapeHtml(t)}</strong><br>${escapeHtml(desc)}</p>`;
+  });
+
+  const skillsHTML = skillsArr.map(s=>`<span>${escapeHtml(s)}</span>`).join(' ');
+
+  const html = `<div class="resume-header"><h1>${escapeHtml(n)}</h1><p>${escapeHtml(e)} | ${escapeHtml(p)}</p><p>${escapeHtml(a)}</p></div>
+    <div class="resume-body">
+      <div class="resume-left">
+        <h4>Objective</h4><p>${escapeHtml(o)}</p>
+        <h4>Skills</h4><div class="skills">${skillsHTML}</div>
+        <h4>Education</h4>${eduHTML}
+      </div>
+      <div class="resume-right">
+        <h4>Work Experience</h4>
+        ${workHTML}
+        <h4>Projects / Achievements</h4>${projHTML}
+        <div class="signature"><p>Signature: ${escapeHtml(sig)}</p></div>
+      </div>
+    </div>`;
+
+  id('resume-output').innerHTML = html;
+  id('resume-output').style.display = 'block';
+
+  // scroll to preview so user sees resume under the form
+  setTimeout(()=>{ id('resume-output').scrollIntoView({behavior:'smooth', block:'start'}); }, 80);
+}
+
+/* small helper to avoid XSS if user pastes HTML */
+function escapeHtml(str){
+  if(!str) return '';
+  return String(str).replace(/[&<>"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]); });
+}
+
+/* ------------------------------
+   Generate QR (large and accurate)
+   ------------------------------ */
+function generateQR(){
+  prepareResume(); // ensure latest
+  // collect data (supports multiple work entries)
+  const resume = {
+    fullName: id('fullName').value || '',
+    email: id('email').value || '',
+    phone: id('phone').value || '',
+    address: id('address').value || '',
+    objective: id('objective').value || '',
+    skills: id('skills').value.split(',').map(s=>s.trim()).filter(Boolean),
+    signature: id('signature').value || '',
+    education: [...document.querySelectorAll('.edu-block')].map(b=>({
+      degree: (b.querySelector('.degree') && b.querySelector('.degree').value) || '',
+      institution: (b.querySelector('.institution') && b.querySelector('.institution').value) || '',
+      year: (b.querySelector('.year') && b.querySelector('.year').value) || '',
+      grade: (b.querySelector('.grade') && b.querySelector('.grade').value) || ''
+    })),
+    projects: [...document.querySelectorAll('.proj-block')].map(b=>({
+      title: (b.querySelector('.projectTitle') && b.querySelector('.projectTitle').value) || '',
+      desc: (b.querySelector('.projectDesc') && b.querySelector('.projectDesc').value) || ''
+    })),
+    work: [...document.querySelectorAll('.work-block')].map(b=>({
+      company: (b.querySelector('.company') && b.querySelector('.company').value) || '',
+      role: (b.querySelector('.role') && b.querySelector('.role').value) || '',
+      duration: (b.querySelector('.duration') && b.querySelector('.duration').value) || '',
+      responsibilities: (b.querySelector('.responsibilities') && b.querySelector('.responsibilities').value) || ''
+    }))
+  };
+
+  const json = JSON.stringify(resume);
+  // create big QR with high error correction
+  id('qrcode').innerHTML = '';
+  new QRCode(id('qrcode'), { text: json, width: 260, height: 260, correctLevel: QRCode.CorrectLevel.H });
+  alert('✅ Large, accurate QR generated.');
+}
+
+/* ------------------------------
+   Download QR image
+   ------------------------------ */
+function downloadQR(){
+  const container = id('qrcode');
+  const canvas = container.querySelector('canvas');
+  if(!canvas){ alert('Generate QR first!'); return; }
+  const link = document.createElement('a');
+  link.href = canvas.toDataURL('image/png');
+  link.download = 'resume-qr.png';
+  link.click();
+}
+
+/* ------------------------------
+   Fill form from parsed data
+   Accepts JSON or key=value pairs (semicolon or newline separated).
+   Also supports key names for arrays like education[0].degree or education0.degree
+   ------------------------------ */
+function fillFromParsed(data){
+  if(!data || typeof data !== 'object') return;
+  // basic fields
+  if(data.fullName || data.fullname || data.name) id('fullName').value = data.fullName || data.fullname || data.name;
+  if(data.email) id('email').value = data.email;
+  if(data.phone) id('phone').value = data.phone;
+  if(data.address) id('address').value = data.address;
+  if(data.objective) id('objective').value = data.objective;
+  if(data.signature) id('signature').value = data.signature;
+
+  // skills: array or comma string
+  if(data.skills){
+    if(Array.isArray(data.skills)) id('skills').value = data.skills.join(', ');
+    else id('skills').value = String(data.skills);
+  }
+
+  // education array
+  if(Array.isArray(data.education)){
+    id('education-section').innerHTML = '';
+    data.education.forEach(ed=>{
+      addEducation();
+      const last = id('education-section').lastElementChild;
+      last.querySelector('.degree').value = ed.degree || '';
+      last.querySelector('.institution').value = ed.institution || '';
+      last.querySelector('.year').value = ed.year || '';
+      last.querySelector('.grade').value = ed.grade || '';
+    });
+  }
+
+  // projects array
+  if(Array.isArray(data.projects)){
+    id('project-section').innerHTML = '';
+    data.projects.forEach(pr=>{
+      addProject();
+      const last = id('project-section').lastElementChild;
+      last.querySelector('.projectTitle').value = pr.title || '';
+      last.querySelector('.projectDesc').value = pr.desc || '';
+    });
+  }
+
+  // work array
+  if(Array.isArray(data.work)){
+    id('work-section').innerHTML = ''; // clear existing blocks
+    data.work.forEach((wk, idx)=>{
+      addWork(); // add block(s). For the very first, we want to preserve ids — so if idx===0, populate the first block then ensure ids exist
+      const blocks = id('work-section').querySelectorAll('.work-block');
+      const target = blocks[blocks.length-1];
+      // if this is the first block, also add ids to keep compatibility
+      if(blocks.length === 1){
+        // set id on fields in the first block for backward compatibility
+        const comp = target.querySelector('.company');
+        const rl = target.querySelector('.role');
+        const du = target.querySelector('.duration');
+        const re = target.querySelector('.responsibilities');
+        if(comp) comp.id = 'company';
+        if(rl) rl.id = 'role';
+        if(du) du.id = 'duration';
+        if(re) re.id = 'responsibilities';
+      }
+      if(target){
+        const compi = target.querySelector('.company'); if(compi) compi.value = wk.company || '';
+        const rolei = target.querySelector('.role'); if(rolei) rolei.value = wk.role || '';
+        const duri = target.querySelector('.duration'); if(duri) duri.value = wk.duration || '';
+        const respi= target.querySelector('.responsibilities'); if(respi) respi.value = wk.responsibilities || '';
+      }
+    });
+  }
+
+  // Also handle flattened keys like education0.degree or education[0].degree, projects0.title, work0.company etc.
+  Object.keys(data).forEach(k=>{
+    const m = k.match(/education(?:\[(\d+)\]|(\d+))?\.(degree|institution|year|grade)/i);
+    if(m){
+      const idx = (m[1] || m[2] || 0) * 1;
+      const field = m[3].toLowerCase();
+      const eduSec = id('education-section');
+      while(eduSec.children.length <= idx) addEducation();
+      const block = eduSec.children[idx];
+      if(block){
+        const inp = block.querySelector('.' + field);
+        if(inp) inp.value = data[k];
+      }
+    }
+    const m2 = k.match(/projects?(?:\[(\d+)\]|(\d+))?\.(title|desc)/i);
+    if(m2){
+      const idx = (m2[1] || m2[2] || 0) * 1;
+      const field = m2[3].toLowerCase();
+      const projSec = id('project-section');
+      while(projSec.children.length <= idx) addProject();
+      const block = projSec.children[idx];
+      if(block){
+        const inp = (field === 'title') ? block.querySelector('.projectTitle') : block.querySelector('.projectDesc');
+        if(inp) inp.value = data[k];
+      }
+    }
+    const m3 = k.match(/work(?:\[(\d+)\]|(\d+))?\.(company|role|duration|responsibilities)/i);
+    if(m3){
+      const idx = (m3[1] || m3[2] || 0) * 1;
+      const field = m3[3].toLowerCase();
+      const workSec = id('work-section');
+      while(workSec.children.length <= idx) addWork();
+      const block = workSec.children[idx];
+      if(block){
+        const inp = block.querySelector('.' + field);
+        if(inp) inp.value = data[k];
+      }
+    }
+  });
+
+  prepareResume();
+  alert('✅ Data imported successfully!');
+}
+
+/* Parse text: try JSON first, else parse key=value; allow education0.degree=.. or education[0].degree=.. */
+function parseDecodedText(text){
+  if(!text) return null;
+  text = text.trim();
+  try{
+    const obj = JSON.parse(text);
+    return obj;
+  }catch(err){
+    const result = {};
+    const parts = text.split(/;|\n/).map(s=>s.trim()).filter(Boolean);
+    parts.forEach(p=>{
+      const pos = p.indexOf('=');
+      if(pos > 0){
+        const key = p.slice(0,pos).trim();
+        let val = p.slice(pos+1).trim();
+        if(result[key] !== undefined){
+          if(!Array.isArray(result[key])) result[key] = [result[key]];
+          result[key].push(val);
+        } else {
+          result[key] = val;
+        }
+      }
+    });
+    return Object.keys(result).length ? result : null;
+  }
+}
+
+/* ------------------------------
+   Scanner (large overlay)
+   ------------------------------ */
+let html5QrScannerInstance = null;
+
+function openScanner(){
+  const overlay = id('scannerOverlay');
+  overlay.style.display = 'flex';
+  id('qr-reader').innerHTML = '';
+  html5QrScannerInstance = new Html5Qrcode("qr-reader", false);
+
+  const config = { fps: 10, qrbox: function() {
+      const minSide = Math.min(window.innerWidth, window.innerHeight);
+      const size = Math.floor(Math.min(720, Math.max(300, minSide * 0.7)));
+      return { width: size, height: size };
+    }() };
+
+  html5QrScannerInstance.start(
+    { facingMode: "environment" },
+    config,
+    decodedText => {
+      const parsed = parseDecodedText(decodedText);
+      if(parsed){
+        fillFromParsed(parsed);
+        id('qr-json-area').style.display = 'block';
+        try { id('qr-json-area').value = (typeof parsed === 'object') ? JSON.stringify(parsed, null, 2) : String(parsed); } catch(e){ id('qr-json-area').value = String(parsed); }
+      } else {
+        alert('⚠️ QR decoded but the content is not recognized as JSON or key=value pairs.');
+      }
+      setTimeout(()=>{ closeScanner(); }, 700);
+    },
+    errorMessage => {
+      // ignore per-frame errors
+    }
+  ).catch(err=>{
+    console.error('Scanner start error', err);
+    alert('⚠️ Camera access error or not allowed. Please allow camera permission and try again.');
+    closeScanner();
+  });
+}
+
+function closeScanner(){
+  const overlay = id('scannerOverlay');
+  overlay.style.display = 'none';
+  if(html5QrScannerInstance){
+    html5QrScannerInstance.stop().catch(()=>{}).finally(()=>{ html5QrScannerInstance.clear(); html5QrScannerInstance = null; });
+  }
+}
+
+/* ------------------------------
+   Manual import from textarea prompt or visible area
+   ------------------------------ */
+function importJSONorText(){
+  const area = id('qr-json-area');
+  if(area.style.display === 'none') {
+    area.style.display = 'block';
+    area.focus();
+    return;
+  }
+  const txt = area.value.trim();
+  if(!txt) { alert('Paste JSON or key=value text into the area above and click Import again.'); return; }
+  const parsed = parseDecodedText(txt);
+  if(!parsed){ alert('⚠️ Could not parse the input. Ensure valid JSON or key=value pairs.'); return; }
+  fillFromParsed(parsed);
+}
+
+/* ------------------------------
+   PDF generation (captures resume-output)
+   - We keep html2canvas fallback for broad browser compatibility
+   ------------------------------ */
+async function generatePDF(){
+  const el = id('resume-output');
+  if(!el || el.style.display === 'none'){ alert('Prepare the resume preview first (click Prepare Resume).'); return; }
+
+  try{
+    // try jsPDF.html approach first (if available), fallback to image capture
+    if(window.jspdf && window.jspdf.jsPDF && typeof window.jspdf.jsPDF === 'function'){
+      // Use html2canvas capture + image embed (robust and preserves layout)
+      const scale = 2;
+      const canvas = await html2canvas(el, { scale: scale, useCORS: true, allowTaint: true, backgroundColor: null });
+      const imgData = canvas.toDataURL('image/png');
+
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      const imgW = canvas.width;
+      const imgH = canvas.height;
+      const ratio = Math.min(pageWidth / imgW, pageHeight / imgH);
+      const drawW = imgW * ratio;
+      const drawH = imgH * ratio;
+      const x = (pageWidth - drawW) / 2;
+      const y = 20;
+      pdf.addImage(imgData, 'PNG', x, y, drawW, drawH);
+      pdf.save('resume.pdf');
+    } else {
+      // simple fallback
+      const canvas = await html2canvas(el, { scale: 2, useCORS: true });
+      const imgData = canvas.toDataURL('image/png');
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+      const w = pdf.internal.pageSize.getWidth();
+      const h = pdf.internal.pageSize.getHeight();
+      const ratio = Math.min(w / canvas.width, h / canvas.height);
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width * ratio, canvas.height * ratio);
+      pdf.save('resume.pdf');
+    }
+  }catch(err){
+    console.error(err);
+    alert('⚠️ PDF generation failed. Try again or reduce content size.');
+  }
+}
+
+/* ------------------------------
+   Print resume (only the generated preview)
+   ------------------------------ */
+function printResume(){
+  const resume = id('resume-output');
+  if(!resume || resume.style.display==='none'){ alert('Prepare resume first.'); return; }
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(`<html><head><title>Print Resume</title>
+    <style>body{font-family:Segoe UI, Arial, sans-serif;padding:20px;margin:0;} .resume-header{background:#1a73e8;color:#fff;padding:20px;text-align:center;} .resume-body{display:grid;grid-template-columns:36% 64%;}</style>
+    </head><body>${resume.innerHTML}</body></html>`);
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+}
+
+/* ------------------------------
+   Import helper (button)
+   ------------------------------ */
+function importJSON(){
+  importJSONorText();
+}
+
+/* ------------------------------
+   Reset form
+   ------------------------------ */
+function resetForm(){
+  // clear all inputs & textareas except qr-json-area stays hidden
+  document.querySelectorAll('input,textarea').forEach(i=>{
+    if(i.id === 'qr-json-area') return;
+    i.value = '';
+  });
+
+  // reset dynamic sections to one default block each
+  id('education-section').innerHTML = `<div class="edu-block">
+    <div class="row"><label>Degree:</label><input type="text" class="degree"></div>
+    <div class="row"><label>Institution:</label><input type="text" class="institution"></div>
+    <div class="row"><label>Year:</label><input type="text" class="year"></div>
+    <div class="row"><label>Grade:</label><input type="text" class="grade"></div><hr></div>`;
+
+  id('project-section').innerHTML = `<div class="proj-block">
+    <div class="row"><label>Title:</label><input type="text" class="projectTitle"></div>
+    <div class="row"><label>Description:</label><textarea class="projectDesc"></textarea></div><hr></div>`;
+
+  // reset work-section with a single first block and restore original ids for compatibility
+  id('work-section').innerHTML = `<div class="work-block">
+    <div class="row"><label>Company:</label><input id="company" type="text" class="company"></div>
+    <div class="row"><label>Role:</label><input id="role" type="text" class="role"></div>
+    <div class="row"><label>Duration:</label><input id="duration" type="text" class="duration"></div>
+    <div class="row"><label>Responsibilities:</label><textarea id="responsibilities" class="responsibilities"></textarea></div>
+    <hr></div>`;
+
+  id('qrcode').innerHTML = '';
+  id('resume-output').style.display = 'none';
+  id('qr-json-area').style.display = 'none';
+  id('qr-json-area').value = '';
+}
+
+/* ------------------------------
+   Wire up buttons
+   ------------------------------ */
+id('prepareBtn').addEventListener('click', prepareResume);
+id('generateQRBtn').addEventListener('click', generateQR);
+id('downloadQRBtn').addEventListener('click', downloadQR);
+id('scanQRBtn').addEventListener('click', openScanner);
+id('closeScanner').addEventListener('click', closeScanner);
+id('importJSONBtn').addEventListener('click', importJSON);
+id('pdfBtn').addEventListener('click', generatePDF);
+id('resetBtn').addEventListener('click', resetForm);
+id('printBtn').addEventListener('click', printResume);
+
+/* Prevent accidental navigation during scanning (optional)
+window.addEventListener('beforeunload', function(e){ if(html5QrScannerInstance){ e.preventDefault(); e.returnValue = ''; } }); */
+
+</script>
+
+<div id="resume-output" style="display:none; margin-top:40px;"></div>
+
+</body>
+</html>
