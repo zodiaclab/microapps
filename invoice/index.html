@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invoice Generator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f9f9f9;
+    }
+    h2 { text-align: center; }
+    .container {
+      max-width: 900px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .row label {
+      width: 120px;
+      padding: 5px;
+    }
+    .row input, .row select {
+      flex: 1;
+      padding: 5px;
+      margin: 2px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+    th, td {
+      padding: 8px;
+      text-align: center;
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    button {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 5px;
+      background: #007bff;
+      color: #fff;
+      cursor: pointer;
+    }
+    button.small { background: #28a745; }
+    button.danger { background: #dc3545; }
+    .invoice {
+      margin-top: 30px;
+      padding: 20px;
+      border: 1px solid #ccc;
+      background: #fff;
+    }
+    .invoice h3 { text-align: center; }
+    .signature { margin-top: 40px; text-align: right; }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .row {
+        flex-direction: column;
+      }
+      .row label { width: 100%; }
+      .controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      button { width: 100%; }
+      th, td { font-size: 13px; padding: 6px; }
+    }
+
+    /* Print only invoice */
+    @media print {
+      body * { visibility: hidden; }
+      #invoice-output, #invoice-output * { visibility: visible; }
+      #invoice-output { position: absolute; left: 0; top: 0; width: 90%; }
+    }
+/* Responsive fix for items table on small screens */
+@media (max-width: 768px) {
+  #items-table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  #items-table table {
+    width: 600px; /* keep natural width, allow horizontal scroll */
+    max-width: none;
+  }
+}
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Invoice Generator</h2>
+    <div class="row"><label>Name/Company:</label><input type="text" id="name"></div>
+    <div class="row">
+      <label>Date:</label>
+      <input type="number" id="day" placeholder="DD" min="1" max="31">
+      <input type="number" id="month" placeholder="MM" min="1" max="12">
+      <input type="number" id="year" placeholder="YYYY" min="1900" max="2100">
+    </div>
+    <div class="row"><label>Currency:</label>
+      <select id="currency">
+        <option value="₹">₹</option>
+        <option value="$">$</option>
+        <option value="€">€</option>
+        <option value="£">£</option>
+      </select>
+    </div>
+
+    <h3>Items</h3>
+    <table id="items-table">
+      <thead>
+        <tr>
+          <th>Particulars</th>
+          <th>Quantity</th>
+          <th>Price per unit</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><input type="text" class="particular"></td>
+          <td><input type="number" class="qty" min="1" value="1"></td>
+          <td><input type="number" class="price" min="0" value="0"></td>
+          <td class="row-total">0</td>
+        </tr>
+      </tbody>
+    </table>
+    <button type="button" onclick="addRow()">+ Add Item</button>
+
+    <div class="row"><label>Signature:</label><input type="text" id="signature"></div>
+
+    <div class="controls">
+      <button id="prepareBtn" type="button">Prepare</button>
+      <button id="printBtn" type="button" class="small">Print</button>
+      <button id="resetBtn" type="button" class="danger">Reset</button>
+    </div>
+
+    <div id="invoice-output" class="invoice" style="display:none;"></div>
+  </div>
+
+  <script>
+    function addRow() {
+      const tbody = document.querySelector('#items-table tbody');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input type="text" class="particular"></td>
+        <td><input type="number" class="qty" min="1" value="1"></td>
+        <td><input type="number" class="price" min="0" value="0"></td>
+        <td class="row-total">0</td>
+      `;
+      tbody.appendChild(tr);
+      attachRowEvents(tr);
+    }
+
+    function attachRowEvents(row) {
+      const qtyInput = row.querySelector('.qty');
+      const priceInput = row.querySelector('.price');
+      const totalCell = row.querySelector('.row-total');
+      function updateRowTotal() {
+        const qty = parseFloat(qtyInput.value) || 0;
+        const price = parseFloat(priceInput.value) || 0;
+        totalCell.textContent = (qty * price).toFixed(2);
+      }
+      qtyInput.addEventListener('input', updateRowTotal);
+      priceInput.addEventListener('input', updateRowTotal);
+    }
+
+    // Attach events to first row
+    attachRowEvents(document.querySelector('#items-table tbody tr'));
+
+    function prepareInvoice() {
+      const name = document.getElementById('name').value;
+      const day = document.getElementById('day').value;
+      const month = document.getElementById('month').value;
+      const year = document.getElementById('year').value;
+      const currency = document.getElementById('currency').value;
+      const signature = document.getElementById('signature').value;
+
+      const rows = document.querySelectorAll('#items-table tbody tr');
+      let itemsHTML = '';
+      let grandTotal = 0;
+
+      rows.forEach(r => {
+        const part = r.querySelector('.particular').value;
+        const qty = parseFloat(r.querySelector('.qty').value) || 0;
+        const price = parseFloat(r.querySelector('.price').value) || 0;
+        const total = qty * price;
+        grandTotal += total;
+        itemsHTML += `<tr><td>${part}</td><td>${qty}</td><td>${currency}${price.toFixed(2)}</td><td>${currency}${total.toFixed(2)}</td></tr>`;
+      });
+
+      const html = `
+        <h3>Invoice</h3>
+        <p><strong>Name/Company:</strong> ${name}</p>
+        <p><strong>Date:</strong> ${day}-${month}-${year}</p>
+        <table>
+          <tr><th>Particulars</th><th>Qty</th><th>Price</th><th>Total</th></tr>
+          ${itemsHTML}
+          <tr><td colspan="3"><strong>Grand Total</strong></td><td><strong>${currency}${grandTotal.toFixed(2)}</strong></td></tr>
+        </table>
+        <div class="signature"><p>Signature: ${signature}</p></div>
+      `;
+
+      document.getElementById('invoice-output').style.display = 'block';
+      document.getElementById('invoice-output').innerHTML = html;
+    }
+
+    function resetForm() {
+      document.querySelectorAll('input').forEach(i => i.value = '');
+      document.querySelector('#items-table tbody').innerHTML = `<tr>
+          <td><input type="text" class="particular"></td>
+          <td><input type="number" class="qty" min="1" value="1"></td>
+          <td><input type="number" class="price" min="0" value="0"></td>
+          <td class="row-total">0</td>
+        </tr>`;
+      attachRowEvents(document.querySelector('#items-table tbody tr'));
+      document.getElementById('invoice-output').style.display = 'none';
+    }
+
+    document.getElementById('prepareBtn').addEventListener('click', prepareInvoice);
+    document.getElementById('printBtn').addEventListener('click', () => window.print());
+    document.getElementById('resetBtn').addEventListener('click', resetForm);
+  </script>
+</body>
+</html>
