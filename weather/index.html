@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enhanced Weather Widget</title>
+<style>
+  body {
+    font-family: 'Arial', sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    background: linear-gradient(to bottom, #87CEFA, #f0f8ff);
+    transition: background 0.5s;
+  }
+  .container {
+    margin-top: 30px;
+    text-align: center;
+  }
+  .weather-widget {
+    background: rgba(255,255,255,0.95);
+    border-radius: 15px;
+    padding: 20px;
+    width: 320px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    margin-bottom: 20px;
+  }
+  h2 { margin: 0 0 10px 0; }
+  input[type="text"] { width: 65%; padding: 5px; border-radius: 5px; border: 1px solid #ccc; }
+  button { padding: 5px 10px; border-radius: 5px; border: none; background-color: #007BFF; color: white; cursor: pointer; }
+  button:hover { background-color: #0056b3; }
+  .current-weather { margin-top: 15px; }
+  .temp { font-size: 48px; }
+  .desc { font-size: 18px; }
+  /* Remove width/height from .icon if using emoji */
+.icon {
+  display: inline-block;
+  margin-bottom: 10px;
+}
+  .forecast { display: flex; justify-content: space-between; margin-top: 15px; }
+  .day-card {
+    background: rgba(0,0,0,0.05);
+    border-radius: 10px;
+    padding: 10px;
+    width: 55px;
+    font-size: 14px;
+  }
+  .day-card img { width: 40px; height: 40px; margin-bottom: 5px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="weather-widget">
+    <h2>Weather Widget</h2>
+    <input type="text" id="cityInput" placeholder="Enter city name">
+    <button onclick="getWeather()">Get Weather</button>
+    <div class="current-weather" id="currentWeather">
+      <img id="icon" class="icon" src="" alt="" style="display:none;">
+      <div class="temp" id="temp"></div>
+      <div class="desc" id="desc"></div>
+      <div id="humidity"></div>
+    </div>
+    <div class="forecast" id="forecast"></div>
+  </div>
+</div>
+
+<audio id="bgMusic" loop autoplay>
+  <source id="musicSrc" src="" type="audio/mpeg">
+</audio>
+
+<script>
+// Helper: Get coordinates using Nominatim
+async function getCoordinates(city) {
+  const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${city}`);
+  const data = await res.json();
+  if(data.length === 0) return null;
+  return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon), name: data[0].display_name };
+}
+
+// Map Open-Meteo weather code to description + icon
+function weatherCodeMap(code){
+  const map = {
+    0: {desc:"Clear sky", icon:"☀️"},
+    1: {desc:"Mainly clear", icon:"🌤️"},
+    2: {desc:"Partly cloudy", icon:"⛅"},
+    3: {desc:"Overcast", icon:"☁️"},
+    45: {desc:"Fog", icon:"🌫️"},
+    48: {desc:"Depositing rime fog", icon:"🌫️"},
+    51: {desc:"Light drizzle", icon:"🌦️"},
+    53: {desc:"Moderate drizzle", icon:"🌦️"},
+    55: {desc:"Dense drizzle", icon:"🌧️"},
+    61: {desc:"Slight rain", icon:"🌦️"},
+    63: {desc:"Moderate rain", icon:"🌧️"},
+    65: {desc:"Heavy rain", icon:"🌧️"},
+    71: {desc:"Slight snow", icon:"🌨️"},
+    73: {desc:"Moderate snow", icon:"🌨️"},
+    75: {desc:"Heavy snow", icon:"❄️"},
+    80: {desc:"Rain showers", icon:"🌦️"},
+    81: {desc:"Moderate rain showers", icon:"🌧️"},
+    82: {desc:"Heavy rain showers", icon:"🌧️"},
+    95: {desc:"Thunderstorm", icon:"⛈️"}
+  };
+  return map[code] || {desc:"Unknown", icon:"❔"};
+}
+
+// Set background music based on weather
+function setMusic(code){
+  const music = document.getElementById('musicSrc');
+  if(code <= 1) music.src = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'; // clear
+  else if(code <= 3) music.src = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3'; // cloudy
+  else music.src = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3'; // rain/storm
+  document.getElementById('bgMusic').load();
+  document.getElementById('bgMusic').play();
+}
+
+async function getWeather(){
+  const city = document.getElementById('cityInput').value;
+  if(!city) return alert('Enter a city!');
+
+  const coords = await getCoordinates(city);
+  if(!coords) return alert('City not found!');
+
+  // Get current weather + daily forecast
+  const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto`);
+  const data = await weatherRes.json();
+
+  const current = data.current_weather;
+  const weather = weatherCodeMap(current.weathercode);
+  
+  document.getElementById('temp').textContent = `${Math.round(current.temperature)}°C`;
+  document.getElementById('desc').textContent = weather.desc;
+  document.getElementById('icon').textContent = weather.icon;
+  document.getElementById('icon').style.display = 'inline';
+  document.getElementById('humidity').textContent = `Wind: ${current.windspeed} km/h`;
+
+  setBackground(current.weathercode);
+  setMusic(current.weathercode);
+
+  // Forecast cards
+  const forecastEl = document.getElementById('forecast');
+  forecastEl.innerHTML = '';
+  for(let i=0;i<5;i++){
+    const day = new Date(data.daily.time[i]);
+    const max = Math.round(data.daily.temperature_2m_max[i]);
+    const min = Math.round(data.daily.temperature_2m_min[i]);
+    const code = data.daily.weathercode[i];
+    const info = weatherCodeMap(code);
+    const card = document.createElement('div');
+    card.className = 'day-card';
+    card.innerHTML = `<div>${day.toLocaleDateString('en-US',{weekday:'short'})}</div>
+                      <div>${info.icon}</div>
+                      <div>${max}°/${min}°</div>`;
+    forecastEl.appendChild(card);
+  }
+}
+
+// Background gradient based on weather
+function setBackground(code){
+  const body = document.body;
+  if(code <=1) body.style.background = 'linear-gradient(to bottom, #fceabb, #f8b500)'; // clear
+  else if(code <=3) body.style.background = 'linear-gradient(to bottom, #d7d2cc, #304352)'; // cloudy
+  else body.style.background = 'linear-gradient(to bottom, #4e54c8, #8f94fb)'; // rain/storm
+}
+</script>
+</body>
+</html>
