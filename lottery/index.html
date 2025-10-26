@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lottery Draw Simulator</title>
+<style>
+    body {
+        background: radial-gradient(circle at top, #222 0%, #111 100%);
+        color: #fff;
+        font-family: "Poppins", sans-serif;
+        text-align: center;
+        margin: 0;
+        padding: 0;
+    }
+
+    header, footer {
+        background: #111;
+        padding: 12px 0;
+        font-size: 1.2em;
+        letter-spacing: 1px;
+    }
+
+    .container {
+        max-width: 480px;
+        margin: 25px auto;
+        background: #1a1a1a;
+        border-radius: 15px;
+        box-shadow: 0 0 20px #0f0 inset;
+        padding: 18px;
+    }
+
+    h2 {
+        margin-bottom: 10px;
+        color: #0f0;
+    }
+
+    .drum {
+        width: 180px;
+        height: 180px;
+        border: 5px solid #0f0;
+        border-radius: 50%;
+        margin: 15px auto;
+        position: relative;
+        overflow: hidden;
+        background: radial-gradient(circle, #333, #000);
+        animation: spinDrum 0s linear infinite;
+    }
+
+    .ball {
+        width: 35px;
+        height: 35px;
+        background: gold;
+        color: #000;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        position: absolute;
+        animation: floatBall 1.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes floatBall {
+        from { transform: translateY(0); }
+        to { transform: translateY(-15px); }
+    }
+
+    @keyframes spinDrum {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
+    .numbers {
+        margin-top: 12px;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 7px;
+    }
+
+    .number {
+        background: #333;
+        border: 2px solid #0f0;
+        border-radius: 50%;
+        width: 38px;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+
+    .number.selected {
+        background: #0f0;
+        color: #000;
+    }
+
+    .number.match {
+        background: gold;
+        border-color: #fff;
+        color: #000;
+        animation: blink 0.8s infinite alternate;
+    }
+
+    @keyframes blink {
+        from { opacity: 1; }
+        to { opacity: 0.5; }
+    }
+
+    button {
+        background: #0f0;
+        border: none;
+        padding: 9px 18px;
+        margin: 8px;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: 0.3s;
+    }
+
+    button:hover {
+        background: gold;
+    }
+
+    #resultBox {
+        margin-top: 10px;
+        font-weight: bold;
+        color: #0f0;
+    }
+
+    @media (max-width: 480px) {
+        .number {
+            width: 34px;
+            height: 34px;
+            font-size: 0.9em;
+        }
+        .drum {
+            width: 150px;
+            height: 150px;
+        }
+    }
+
+    footer {
+        margin-top: 35px;
+        color: #aaa;
+        font-size: 0.9em;
+    }
+</style>
+</head>
+<body>
+<header>🎟️ Lottery Draw Simulator 🎟️</header>
+
+<div class="container">
+    <h2>Your Ticket</h2>
+    <div class="numbers" id="ticketNumbers"></div>
+    <button id="quickPickBtn">🎲 Quick Pick</button>
+    <button id="drawBtn">Start Draw</button>
+    <button id="resetBtn">🔄 Reset</button>
+
+    <div class="drum" id="drum"></div>
+
+    <h3>Winning Numbers</h3>
+    <div class="numbers" id="winningNumbers"></div>
+
+    <div id="resultBox"></div>
+</div>
+
+<footer>© 2025 LuckyDraw Entertainment</footer>
+
+<!-- Same Sounds -->
+<audio id="drumSound" loop>
+  <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3" type="audio/mpeg">
+</audio>
+<audio id="winSound">
+  <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+const ticketNumbers = document.getElementById("ticketNumbers");
+const winningNumbers = document.getElementById("winningNumbers");
+const drawBtn = document.getElementById("drawBtn");
+const quickPickBtn = document.getElementById("quickPickBtn");
+const drum = document.getElementById("drum");
+const drumSound = document.getElementById("drumSound");
+const winSound = document.getElementById("winSound");
+const resultBox = document.getElementById("resultBox");
+
+document.getElementById("resetBtn").addEventListener("click", () => {
+    location.reload();
+});
+
+let userNumbers = [];
+const totalBalls = 36;
+const pickCount = 6;
+
+function createNumberGrid() {
+    for (let i = 1; i <= totalBalls; i++) {
+        const num = document.createElement("div");
+        num.classList.add("number");
+        num.textContent = i;
+        num.addEventListener("click", () => toggleNumber(num));
+        ticketNumbers.appendChild(num);
+    }
+}
+
+function toggleNumber(numEl) {
+    const value = parseInt(numEl.textContent);
+    if (userNumbers.includes(value)) {
+        userNumbers = userNumbers.filter(n => n !== value);
+        numEl.classList.remove("selected");
+    } else if (userNumbers.length < pickCount) {
+        userNumbers.push(value);
+        numEl.classList.add("selected");
+    }
+}
+
+function quickPick() {
+    resetSelection();
+    while (userNumbers.length < pickCount) {
+        let n = Math.floor(Math.random() * totalBalls) + 1;
+        if (!userNumbers.includes(n)) userNumbers.push(n);
+    }
+    userNumbers.forEach(num => {
+        const el = [...ticketNumbers.children].find(e => +e.textContent === num);
+        el.classList.add("selected");
+    });
+}
+
+function resetSelection() {
+    userNumbers = [];
+    [...ticketNumbers.children].forEach(e => e.classList.remove("selected", "match"));
+}
+
+function animateDrum() {
+    drum.innerHTML = "";
+    drum.style.animation = "spinDrum 3s linear infinite";
+    for (let i = 0; i < 10; i++) {
+        const ball = document.createElement("div");
+        ball.classList.add("ball");
+        ball.style.left = Math.random() * 120 + "px";
+        ball.style.top = Math.random() * 120 + "px";
+        ball.textContent = Math.floor(Math.random() * totalBalls) + 1;
+        drum.appendChild(ball);
+    }
+}
+
+function stopDrum() {
+    drum.style.animation = "";
+    drum.innerHTML = "";
+}
+
+function startDraw() {
+    if (userNumbers.length !== pickCount) {
+        resultBox.textContent = `Please select or Quick Pick ${pickCount} numbers!`;
+        resultBox.style.color = "gold";
+        return;
+    }
+
+    drumSound.play();
+    animateDrum();
+    resultBox.textContent = "🎲 Drawing in progress...";
+    resultBox.style.color = "#0f0";
+
+    setTimeout(() => {
+        stopDrum();
+        drumSound.pause();
+        drumSound.currentTime = 0;
+
+        const winning = [];
+        while (winning.length < pickCount) {
+            const n = Math.floor(Math.random() * totalBalls) + 1;
+            if (!winning.includes(n)) winning.push(n);
+        }
+
+        displayResults(winning);
+    }, 4000);
+}
+
+function displayResults(winning) {
+    winningNumbers.innerHTML = "";
+    let matches = 0;
+
+    winning.forEach(n => {
+        const el = document.createElement("div");
+        el.classList.add("number");
+        el.textContent = n;
+        if (userNumbers.includes(n)) {
+            el.classList.add("match");
+            matches++;
+            const matchEl = [...ticketNumbers.children].find(e => +e.textContent === n);
+            matchEl.classList.add("match");
+        }
+        winningNumbers.appendChild(el);
+    });
+
+    if (matches > 0) {
+        winSound.play();
+        resultBox.textContent = `🎉 You matched ${matches} number(s)!`;
+        resultBox.style.color = "gold";
+    } else {
+        resultBox.textContent = "No matches this time — try again!";
+        resultBox.style.color = "#ccc";
+    }
+}
+
+createNumberGrid();
+quickPickBtn.addEventListener("click", quickPick);
+drawBtn.addEventListener("click", startDraw);
+</script>
+</body>
+</html>
