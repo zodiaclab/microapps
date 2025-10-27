@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Smart Unit Converter</title>
+<style>
+  body {
+    font-family: "Poppins", sans-serif;
+    /*background: linear-gradient(135deg, #6a11cb, #2575fc);*/
+    background: linear-gradient(135deg, #6a5fff, #255fff);
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .converter-box {
+    background: rgba(255,255,255,0.2);
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    width: 360px;
+    text-align: center;
+    backdrop-filter: blur(8px);
+  }
+  select, input {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+  }
+  input { text-align: center; }
+  button {
+    width: 100%;
+    background: #ff6f61;
+    color: #fff;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+  button:hover { background: #ff3b2f; }
+  h1 { font-size: 1.5em; margin: 0 0 10px; }
+  .result { margin-top: 16px; font-size: 20px; font-weight: 600; color: #fff; }
+  .note { margin-top:8px; font-size:12px; opacity:0.9; }
+
+ .short-input { width: 95%; }
+
+</style>
+</head>
+<body>
+  <div class="converter-box">
+    <h1>🌍 Smart Unit Converter</h1>
+
+    <select id="type">
+      <option value="length">Length</option>
+      <option value="weight">Weight</option>
+      <option value="temperature">Temperature</option>
+      <option value="speed">Speed</option>
+      <option value="currency">Currency</option>
+    </select>
+
+    <!--<input type="number" id="inputValue" placeholder="Enter value: Example - 1 or 2 etc" />-->
+    <input type="number" id="inputValue" placeholder="Enter value: Example - 1 or 2 etc" class="short-input" />
+
+    <div id="unitSelectors">
+      <select id="fromUnit"></select>
+      <select id="toUnit"></select>
+    </div>
+
+    <button onclick="convert()">Convert</button>
+
+    <div class="result" id="result">Result will appear here</div>
+    <div class="note">Currency conversion uses exchangerate.host (free, no API key).</div>
+  </div>
+
+<script>
+const unitOptions = {
+  length: ['meters', 'kilometers', 'miles', 'feet', 'inches'],
+  weight: ['kilograms', 'grams', 'pounds', 'ounces'],
+  temperature: ['Celsius', 'Fahrenheit', 'Kelvin'],
+  speed: ['m/s','km/h','mph','knots'],
+  currency: ['USD', 'EUR', 'INR', 'GBP', 'JPY', 'AUD']
+};
+
+const typeSelect = document.getElementById('type');
+const fromUnit = document.getElementById('fromUnit');
+const toUnit = document.getElementById('toUnit');
+const resultDiv = document.getElementById('result');
+const inputEl = document.getElementById('inputValue');
+
+function populateUnits() {
+  const type = typeSelect.value;
+  fromUnit.innerHTML = '';
+  toUnit.innerHTML = '';
+  unitOptions[type].forEach((u, idx) => {
+    const opt1 = document.createElement('option');
+    const opt2 = document.createElement('option');
+    opt1.textContent = opt2.textContent = u;
+    opt1.value = opt2.value = u;
+    fromUnit.appendChild(opt1);
+    toUnit.appendChild(opt2);
+  });
+  // choose a sensible default: second option selected for "to" if exists
+  if (toUnit.options.length > 1) toUnit.selectedIndex = 1;
+}
+
+populateUnits();
+typeSelect.addEventListener('change', () => {
+  populateUnits();
+  resultDiv.textContent = 'Result will appear here';
+});
+
+// convert entry on Enter key
+inputEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') convert();
+});
+
+async function convert() {
+  const type = typeSelect.value;
+  const val = parseFloat(inputEl.value);
+  if (isNaN(val)) return (resultDiv.textContent = 'Enter a valid number!');
+
+  let res = 0;
+  if (type === 'length') res = convertLength(val, fromUnit.value, toUnit.value);
+  else if (type === 'weight') res = convertWeight(val, fromUnit.value, toUnit.value);
+  else if (type === 'temperature') res = convertTemperature(val, fromUnit.value, toUnit.value);
+  else if (type === 'speed') res = convertSpeed(val, fromUnit.value, toUnit.value);
+  else if (type === 'currency') res = await convertCurrency(val, fromUnit.value, toUnit.value);
+
+  if (isNaN(res)) resultDiv.textContent = 'Conversion error';
+  else resultDiv.textContent = `${val} ${fromUnit.value} = ${Number(res.toPrecision(7))} ${toUnit.value}`;
+}
+
+/* Length conversions via meters base */
+function convertLength(val, from, to) {
+  const m = { meters:1, kilometers:1000, miles:1609.344, feet:0.3048, inches:0.0254 };
+  return val * (m[from]/m[to]);
+}
+
+/* Weight conversions via grams base */
+function convertWeight(val, from, to) {
+  const g = { kilograms:1000, grams:1, pounds:453.59237, ounces:28.3495231 };
+  return val * (g[from]/g[to]);
+}
+
+/* Temperature conversions via Celsius base */
+function convertTemperature(val, from, to) {
+  if (from === to) return val;
+  let c;
+  if (from === 'Celsius') c = val;
+  else if (from === 'Fahrenheit') c = (val - 32) * 5/9;
+  else if (from === 'Kelvin') c = val - 273.15;
+  if (to === 'Celsius') return c;
+  if (to === 'Fahrenheit') return (c * 9/5) + 32;
+  if (to === 'Kelvin') return c + 273.15;
+  return NaN;
+}
+
+/* Speed conversions via meters per second (m/s) base
+   m/s -> 1
+   km/h -> 0.27777777777778 m/s (1 km/h = 1000 m / 3600 s)
+   mph -> 0.44704 m/s
+   knot -> 0.51444444444444 m/s
+*/
+function convertSpeed(val, from, to) {
+  const toMs = { 'm/s':1, 'km/h':0.27777777777778, 'mph':0.44704, 'knots':0.51444444444444 };
+  if (!(from in toMs) || !(to in toMs)) return NaN;
+  return val * (toMs[from] / toMs[to]);
+}
+
+/* Currency conversion using exchangerate.host (free).
+   Example: https://api.exchangerate.host/convert?from=USD&to=INR
+*/
+/* Currency conversion using ExchangeRate-API (no API key needed)
+   Example: https://open.er-api.com/v6/latest/USD
+*/
+/* Currency conversion using ExchangeRate-API (no API key needed)
+   Example: https://open.er-api.com/v6/latest/USD
+   Shows last updated date/time from API.
+*/
+/* Currency conversion using ExchangeRate-API (no API key needed)
+   Example: https://open.er-api.com/v6/latest/USD
+   Includes "last updated" timestamp.
+*/
+async function convertCurrency(val, from, to) {
+  const url = `https://open.er-api.com/v6/latest/${encodeURIComponent(from)}`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (data && data.result === "success" && data.rates && data.rates[to]) {
+      const rate = data.rates[to];
+      const converted = val * rate;
+
+      // Handle updated time (different APIs use different fields)
+      const lastUpdate =
+        data.time_last_update_utc ||
+        data.time_last_update ||
+        data.time_next_update_utc ||
+        "Unknown";
+
+      resultDiv.innerHTML = `
+        ${val} ${from} = <strong>${converted.toFixed(2)} ${to}</strong><br>
+        <span style="font-size:12px;opacity:0.8;">💱 1 ${from} = ${rate.toFixed(3)} ${to}</span><br>
+        <span style="font-size:11px;opacity:0.7;">🕒 Last updated: ${new Date(lastUpdate).toLocaleString()}</span>
+      `;
+
+      return converted;
+    } else {
+      resultDiv.textContent = 'Currency data unavailable';
+      return NaN;
+    }
+  } catch (err) {
+    resultDiv.textContent = 'Network/API error';
+    return NaN;
+  }
+}
+</script>
+</body>
+</html>
