@@ -1,135 +1,105 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Astrology Micro App</title>
-<style>
-body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f4f4f9; }
-header { background:#4CAF50; color:white; text-align:center; padding:1rem; }
-main { padding:2rem; }
-#birth-details { margin-bottom:2rem; text-align:center; }
-#charts { display:flex; justify-content:space-around; flex-wrap:wrap; margin-bottom:2rem; }
-#charts > div, #predictions > div {
-  width:30%; padding:1rem; background:white; border-radius:8px;
-  box-shadow:0 4px 8px rgba(0,0,0,0.1); margin-bottom:1rem;
-}
-footer { text-align:center; padding:1rem; background:#333; color:white; }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline Horoscope Finder</title>
+  <script src="./swisseph.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: radial-gradient(circle, #1b1b1b, #000);
+      color: #fff;
+      padding: 20px;
+      text-align: center;
+    }
+    h1 { color: #ffd700; }
+    label, input, button { margin: 8px; font-size: 1rem; }
+    input { padding: 6px; border-radius: 5px; border: none; }
+    button {
+      padding: 8px 15px;
+      background: #ffb400;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover { background: #ffcc33; }
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+    }
+  </style>
 </head>
 <body>
-<header>
-  <h1>Astrology Micro App</h1>
-  <p>Discover your Vedic (Moon), Western, and Chinese Zodiac Signs</p>
-</header>
+  <h1>🪐 Offline Horoscope Finder</h1>
 
-<main>
-  <section id="birth-details">
-    <label>Date of Birth: <input type="date" id="dob"></label><br><br>
-    <label>Time (HH:MM): <input type="time" id="tob" value="12:00"></label><br><br>
-    <label>Latitude: <input type="number" id="lat" value="13.08" step="0.01"></label>
-    <label>Longitude: <input type="number" id="lon" value="80.27" step="0.01"></label><br><br>
-    <button onclick="generateCharts()">Generate Charts</button>
-  </section>
+  <div>
+    <label>Date: <input type="date" id="date" value="2025-10-01"></label>
+    <label>Time: <input type="time" id="time" value="12:00"></label><br>
+    <label>Latitude: <input type="number" id="lat" value="13.08"></label>
+    <label>Longitude: <input type="number" id="lon" value="80.27"></label>
+    <label>Timezone: <input type="number" id="tz" step="0.5" value="5.5"></label>
+  </div>
 
-  <section id="charts">
-    <div id="vedic-chart"></div>
-    <div id="western-chart"></div>
-    <div id="chinese-chart"></div>
-  </section>
+  <button onclick="computeHoroscope()">Get Horoscope</button>
 
-  <section id="predictions">
-    <div id="vedic-prediction"></div>
-    <div id="western-prediction"></div>
-    <div id="chinese-prediction"></div>
-  </section>
-</main>
+  <div id="result" class="result"></div>
 
-<footer>
-  <p>Simple Astrology Micro App (Moon via public API)</p>
-</footer>
+  <script>
+    const RASI_NAMES = [
+      "Mesha (Aries)", "Rishabha (Taurus)", "Mithuna (Gemini)",
+      "Karka (Cancer)", "Simha (Leo)", "Kanya (Virgo)",
+      "Tula (Libra)", "Vrischika (Scorpio)", "Dhanus (Sagittarius)",
+      "Makara (Capricorn)", "Kumbha (Aquarius)", "Meena (Pisces)"
+    ];
 
-<script>
-const vedicRasis = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
-const chineseZodiacs = ["Rat","Ox","Tiger","Rabbit","Dragon","Snake","Horse","Goat","Monkey","Rooster","Dog","Pig"];
-const westernZodiacs = [
-  { sign:"Aries", start:"03-21", end:"04-19" },
-  { sign:"Taurus", start:"04-20", end:"05-20" },
-  { sign:"Gemini", start:"05-21", end:"06-20" },
-  { sign:"Cancer", start:"06-21", end:"07-22" },
-  { sign:"Leo", start:"07-23", end:"08-22" },
-  { sign:"Virgo", start:"08-23", end:"09-22" },
-  { sign:"Libra", start:"09-23", end:"10-22" },
-  { sign:"Scorpio", start:"10-23", end:"11-21" },
-  { sign:"Sagittarius", start:"11-22", end:"12-21" },
-  { sign:"Capricorn", start:"12-22", end:"01-19" },
-  { sign:"Aquarius", start:"01-20", end:"02-18" },
-  { sign:"Pisces", start:"02-19", end:"03-20" }
-];
+    async function computeHoroscope() {
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = "Loading Swiss Ephemeris...";
 
-const simplePredictions = {
-  Vedic:"Strong emotional insight and intuitive strength will guide your path.",
-  Western:"Your charm and focus attract positive opportunities.",
-  Chinese:"Patience and optimism bring good fortune."
-};
+      const [yyyy, mm, dd] = document.getElementById('date').value.split('-').map(Number);
+      const [hh, mi] = document.getElementById('time').value.split(':').map(Number);
+      const lat = parseFloat(document.getElementById('lat').value);
+      const lon = parseFloat(document.getElementById('lon').value);
+      const tz = parseFloat(document.getElementById('tz').value);
 
-async function getMoonSign(dateStr, timeStr, lat, lon) {
-  try {
-    const url = `https://api.intrasol.in/astro/moon?date=${dateStr}&time=${timeStr}&lat=${lat}&lon=${lon}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("API error");
-    const data = await res.json();
-    return data; // {longitude, sign}
-  } catch(e) {
-    console.error("Moon API failed", e);
-    return null;
-  }
-}
+      try {
+        await swisseph.init({
+          ephemerisPath: './ephemeris/',
+          wasmFile: './swisseph.wasm'
+        });
 
-function getWesternSign(month, day) {
-  let sign = "Unknown";
-  westernZodiacs.forEach(z=>{
-    let [startM,startD] = z.start.split("-").map(Number);
-    let [endM,endD] = z.end.split("-").map(Number);
-    if( (month===startM && day>=startD) || (month===endM && day<=endD) || 
-        (startM>endM && ((month===startM && day>=startD) || (month===endM && day<=endD))) ){
-      sign = z.sign;
+        // Convert to Universal Time
+        const utHour = hh - tz + (mi / 60);
+        const julDayUT = swisseph.swe_julday(yyyy, mm, dd, utHour, swisseph.SE_GREG_CAL);
+
+        // Get Moon longitude
+        const moon = swisseph.swe_calc_ut(julDayUT, swisseph.SE_MOON, 0);
+        const moonLon = moon.longitude;
+
+        // Determine Rasi (12 signs, 30° each)
+        const rasiIndex = Math.floor(moonLon / 30);
+        const rasi = RASI_NAMES[rasiIndex];
+
+        // Determine Western zodiac (Sun sign)
+        const sun = swisseph.swe_calc_ut(julDayUT, swisseph.SE_SUN, 0);
+        const sunLon = sun.longitude;
+        const westZodiac = RASI_NAMES[Math.floor(sunLon / 30)].split(' ')[0];
+
+        resultDiv.innerHTML = `
+          <h3>🌓 Horoscope Results</h3>
+          <p><b>Vedic (Moon / Rasi):</b> ${rasi}</p>
+          <p><b>Western (Sun Sign):</b> ${westZodiac}</p>
+          <p><b>Moon Longitude:</b> ${moonLon.toFixed(2)}°</p>
+          <p><b>Sun Longitude:</b> ${sunLon.toFixed(2)}°</p>
+        `;
+      } catch (err) {
+        console.error(err);
+        resultDiv.innerHTML = "❌ Swiss Ephemeris initialization failed. Check console for details.";
+      }
     }
-  });
-  return sign;
-}
-
-async function generateCharts(){
-  const dob = document.getElementById("dob").value;
-  const tob = document.getElementById("tob").value || "12:00";
-  const lat = parseFloat(document.getElementById("lat").value);
-  const lon = parseFloat(document.getElementById("lon").value);
-  if(!dob){ alert("Enter DOB"); return; }
-
-  const d = new Date(dob);
-  const month = d.getMonth()+1, day = d.getDate(), year = d.getFullYear();
-
-  // --- VEDIC ---
-  const moonData = await getMoonSign(dob, tob, lat, lon);
-  if (moonData) {
-    document.getElementById("vedic-chart").innerHTML =
-      `<h3>Vedic (Moon Sign)</h3><p>${moonData.sign} (${moonData.longitude.toFixed(2)}°)</p>`;
-    document.getElementById("vedic-prediction").innerHTML =
-      `<h4>Vedic Prediction</h4><p>${simplePredictions.Vedic}</p>`;
-  } else {
-    document.getElementById("vedic-chart").innerHTML = "<h3>Vedic Moon</h3><p>Unavailable</p>";
-  }
-
-  // --- WESTERN ---
-  const westernSign = getWesternSign(month, day);
-  document.getElementById("western-chart").innerHTML = `<h3>Western Zodiac</h3><p>${westernSign}</p>`;
-  document.getElementById("western-prediction").innerHTML = `<h4>Western Prediction</h4><p>${simplePredictions.Western}</p>`;
-
-  // --- CHINESE ---
-  const chineseSign = chineseZodiacs[(year-1900)%12];
-  document.getElementById("chinese-chart").innerHTML = `<h3>Chinese Zodiac</h3><p>${chineseSign}</p>`;
-  document.getElementById("chinese-prediction").innerHTML = `<h4>Chinese Prediction</h4><p>${simplePredictions.Chinese}</p>`;
-}
-</script>
+  </script>
 </body>
 </html>
