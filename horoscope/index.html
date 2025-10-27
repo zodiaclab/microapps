@@ -1,4 +1,135 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Astrology Micro App</title>
+<script src="https://cdn.jsdelivr.net/npm/swisseph-wasm@0.0.2/dist/swisseph.min.js"></script>
+<style>
+body { font-family: Arial,sans-serif; margin:0; padding:0; background:#f4f4f9; }
+header { background:#4CAF50; color:white; text-align:center; padding:1rem; }
+main { padding:2rem; }
+#birth-details { margin-bottom:2rem; text-align:center; }
+#charts, #predictions { display:flex; justify-content:space-around; flex-wrap:wrap; margin-bottom:2rem; }
+#charts>div, #predictions>div { width:30%; padding:1rem; background:white; border-radius:8px; box-shadow:0 4px 8px rgba(0,0,0,0.1); margin-bottom:1rem; }
+footer { text-align:center; padding:1rem; background:#333; color:white; }
+</style>
+</head>
+<body>
 
-  
+<header>
+  <h1>Astrology Micro App</h1>
+  <p>Discover your Vedic, Western, and Chinese zodiac signs</p>
+</header>
+
+<main>
+<section id="birth-details">
+  <label>Date of Birth:</label>
+  <input type="date" id="dob">
+  <label>Time (HH:MM):</label>
+  <input type="time" id="time" value="12:00">
+  <label>Timezone (e.g., 5.5 for IST):</label>
+  <input type="number" step="0.1" id="tzone" value="5.5">
+  <button onclick="generateCharts()">Generate Charts</button>
+</section>
+
+<section id="charts">
+  <div id="vedic-chart"></div>
+  <div id="western-chart"></div>
+  <div id="chinese-chart"></div>
+</section>
+
+<section id="predictions">
+  <div id="vedic-prediction"></div>
+  <div id="western-prediction"></div>
+  <div id="chinese-prediction"></div>
+</section>
+</main>
+
+<footer>
+<p>Simple Astrology Micro App</p>
+</footer>
+
+<script>
+const vedicRasis = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
+const simplePredictions = {
+  Vedic:"A period of personal growth and opportunity awaits you. Be careful with finances.",
+  Western:"Your energy and enthusiasm will attract good things. Stay focused on goals.",
+  Chinese:"Luck and prosperity are coming. Pay attention to relationships."
+};
+const westernZodiacs = [
+  { sign:"Aries", start:"03-21", end:"04-19" },
+  { sign:"Taurus", start:"04-20", end:"05-20" },
+  { sign:"Gemini", start:"05-21", end:"06-20" },
+  { sign:"Cancer", start:"06-21", end:"07-22" },
+  { sign:"Leo", start:"07-23", end:"08-22" },
+  { sign:"Virgo", start:"08-23", end:"09-22" },
+  { sign:"Libra", start:"09-23", end:"10-22" },
+  { sign:"Scorpio", start:"10-23", end:"11-21" },
+  { sign:"Sagittarius", start:"11-22", end:"12-21" },
+  { sign:"Capricorn", start:"12-22", end:"01-19" },
+  { sign:"Aquarius", start:"01-20", end:"02-18" },
+  { sign:"Pisces", start:"02-19", end:"03-20" }
+];
+const chineseZodiacs = ["Rat","Ox","Tiger","Rabbit","Dragon","Snake","Horse","Goat","Monkey","Rooster","Dog","Pig"];
+
+async function initSwissEphemeris() {
+  await swisseph.init({
+    ephemerisPath: 'https://zodiaclab.github.io/microapps/horoscope/'
+  });
+}
+
+function getVedicRasi(longitude) {
+  return vedicRasis[Math.floor(longitude/30)];
+}
+
+function getWesternZodiac(date){
+  const month=date.getMonth()+1; const day=date.getDate();
+  let sign="Unknown";
+  westernZodiacs.forEach(z=>{
+    const [sm,sd]=z.start.split("-").map(Number);
+    const [em,ed]=z.end.split("-").map(Number);
+    if((month==sm && day>=sd) || (month==em && day<=ed) || (sm>em && ((month==sm && day>=sd)||(month==em && day<=ed)))){
+      sign=z.sign;
+    }
+  });
+  return sign;
+}
+
+function getChineseZodiac(date){
+  return chineseZodiacs[(date.getFullYear()-1900)%12];
+}
+
+async function generateCharts(){
+  const dob=document.getElementById("dob").value;
+  const time=document.getElementById("time").value || "12:00";
+  const tzone=parseFloat(document.getElementById("tzone").value)||5.5;
+
+  if(!dob){ alert("Enter date"); return; }
+  const [hour,min]=time.split(":").map(Number);
+  const d=new Date(dob); d.setHours(hour); d.setMinutes(min);
+
+  // Julian Day for UT
+  const jd = swisseph.julday(d.getFullYear(), d.getMonth()+1, d.getDate(), hour - tzone, swisseph.SE_GREG_CAL);
+  const { xx } = await swisseph.calc(jd, swisseph.SE_MOON, swisseph.SEFLG_SWIEPH);
+  const moonLon = xx[0]; // degrees
+  const vedicRasi = getVedicRasi(moonLon);
+
+  document.getElementById("vedic-chart").innerHTML=`<h3>Vedic Moon Sign</h3><p>${vedicRasi}</p>`;
+  document.getElementById("vedic-prediction").innerHTML=`<h4>Vedic Prediction</h4><p>${simplePredictions.Vedic} Moon Sign: <b>${vedicRasi}</b></p>`;
+
+  // Western Zodiac
+  const western=getWesternZodiac(d);
+  document.getElementById("western-chart").innerHTML=`<h3>Western Zodiac</h3><p>${western}</p>`;
+  document.getElementById("western-prediction").innerHTML=`<h4>Western Prediction</h4><p>${simplePredictions.Western}</p>`;
+
+  // Chinese Zodiac
+  const chinese=getChineseZodiac(d);
+  document.getElementById("chinese-chart").innerHTML=`<h3>Chinese Zodiac</h3><p>${chinese}</p>`;
+  document.getElementById("chinese-prediction").innerHTML=`<h4>Chinese Prediction</h4><p>${simplePredictions.Chinese}</p>`;
+}
+
+window.onload = initSwissEphemeris;
+</script>
+</body>
 </html>
