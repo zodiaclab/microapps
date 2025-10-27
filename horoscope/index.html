@@ -1,105 +1,105 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Offline Horoscope Finder</title>
-  <script src="./swisseph.min.js"></script>
-  <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: radial-gradient(circle, #1b1b1b, #000);
-      color: #fff;
-      padding: 20px;
-      text-align: center;
-    }
-    h1 { color: #ffd700; }
-    label, input, button { margin: 8px; font-size: 1rem; }
-    input { padding: 6px; border-radius: 5px; border: none; }
-    button {
-      padding: 8px 15px;
-      background: #ffb400;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    button:hover { background: #ffcc33; }
-    .result {
-      margin-top: 20px;
-      padding: 15px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 10px;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vedic Moon Sign Calculator</title>
+<style>
+body {
+  font-family: Poppins, sans-serif;
+  background: linear-gradient(135deg, #f4f4f9, #e8f5e9);
+  color: #222;
+  text-align: center;
+  padding: 40px;
+}
+.container {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  max-width: 480px;
+  margin: auto;
+  padding: 30px;
+}
+input, button {
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  width: 100%;
+  margin-top: 8px;
+}
+button {
+  background: #4caf50;
+  color: white;
+  cursor: pointer;
+  transition: 0.3s;
+}
+button:hover {
+  background: #45a049;
+}
+.result {
+  margin-top: 20px;
+  font-size: 1.1em;
+}
+</style>
 </head>
 <body>
-  <h1>🪐 Offline Horoscope Finder</h1>
+  <div class="container">
+    <h2>🌕 Vedic Moon Sign Calculator</h2>
+    <p>Enter your birth details below</p>
 
-  <div>
-    <label>Date: <input type="date" id="date" value="2025-10-01"></label>
-    <label>Time: <input type="time" id="time" value="12:00"></label><br>
-    <label>Latitude: <input type="number" id="lat" value="13.08"></label>
-    <label>Longitude: <input type="number" id="lon" value="80.27"></label>
-    <label>Timezone: <input type="number" id="tz" step="0.5" value="5.5"></label>
+    <input type="date" id="dob">
+    <input type="time" id="tob">
+    <input type="number" id="lat" placeholder="Latitude (e.g. 13.08)">
+    <input type="number" id="lon" placeholder="Longitude (e.g. 80.27)">
+    <button id="calcBtn">Calculate Moon Sign</button>
+
+    <div class="result" id="output"></div>
   </div>
 
-  <button onclick="computeHoroscope()">Get Horoscope</button>
+  <script type="module">
+  import init, { swe_calc_ut, swe_julday, SE$MOON, SEFLG_SWIEPH } from "https://cdn.jsdelivr.net/npm/swisseph-wasm@latest/dist/swisseph-wasm.min.js";
 
-  <div id="result" class="result"></div>
+  const signs = [
+    "Aries (Mesha)", "Taurus (Rishabha)", "Gemini (Mithuna)", "Cancer (Karka)",
+    "Leo (Simha)", "Virgo (Kanya)", "Libra (Tula)", "Scorpio (Vrischika)",
+    "Sagittarius (Dhanu)", "Capricorn (Makara)", "Aquarius (Kumbha)", "Pisces (Meena)"
+  ];
 
-  <script>
-    const RASI_NAMES = [
-      "Mesha (Aries)", "Rishabha (Taurus)", "Mithuna (Gemini)",
-      "Karka (Cancer)", "Simha (Leo)", "Kanya (Virgo)",
-      "Tula (Libra)", "Vrischika (Scorpio)", "Dhanus (Sagittarius)",
-      "Makara (Capricorn)", "Kumbha (Aquarius)", "Meena (Pisces)"
-    ];
+  document.getElementById('calcBtn').addEventListener('click', async () => {
+    const dob = document.getElementById('dob').value;
+    const tob = document.getElementById('tob').value || "12:00";
+    const lat = parseFloat(document.getElementById('lat').value) || 13.08;
+    const lon = parseFloat(document.getElementById('lon').value) || 80.27;
 
-    async function computeHoroscope() {
-      const resultDiv = document.getElementById('result');
-      resultDiv.innerHTML = "Loading Swiss Ephemeris...";
-
-      const [yyyy, mm, dd] = document.getElementById('date').value.split('-').map(Number);
-      const [hh, mi] = document.getElementById('time').value.split(':').map(Number);
-      const lat = parseFloat(document.getElementById('lat').value);
-      const lon = parseFloat(document.getElementById('lon').value);
-      const tz = parseFloat(document.getElementById('tz').value);
-
-      try {
-        await swisseph.init({
-          ephemerisPath: './ephemeris/',
-          wasmFile: './swisseph.wasm'
-        });
-
-        // Convert to Universal Time
-        const utHour = hh - tz + (mi / 60);
-        const julDayUT = swisseph.swe_julday(yyyy, mm, dd, utHour, swisseph.SE_GREG_CAL);
-
-        // Get Moon longitude
-        const moon = swisseph.swe_calc_ut(julDayUT, swisseph.SE_MOON, 0);
-        const moonLon = moon.longitude;
-
-        // Determine Rasi (12 signs, 30° each)
-        const rasiIndex = Math.floor(moonLon / 30);
-        const rasi = RASI_NAMES[rasiIndex];
-
-        // Determine Western zodiac (Sun sign)
-        const sun = swisseph.swe_calc_ut(julDayUT, swisseph.SE_SUN, 0);
-        const sunLon = sun.longitude;
-        const westZodiac = RASI_NAMES[Math.floor(sunLon / 30)].split(' ')[0];
-
-        resultDiv.innerHTML = `
-          <h3>🌓 Horoscope Results</h3>
-          <p><b>Vedic (Moon / Rasi):</b> ${rasi}</p>
-          <p><b>Western (Sun Sign):</b> ${westZodiac}</p>
-          <p><b>Moon Longitude:</b> ${moonLon.toFixed(2)}°</p>
-          <p><b>Sun Longitude:</b> ${sunLon.toFixed(2)}°</p>
-        `;
-      } catch (err) {
-        console.error(err);
-        resultDiv.innerHTML = "❌ Swiss Ephemeris initialization failed. Check console for details.";
-      }
+    if (!dob) {
+      alert("Please enter date of birth");
+      return;
     }
+
+    document.getElementById('output').textContent = "Calculating...";
+
+    await init(); // Initialize Swiss Ephemeris WASM
+
+    const [year, month, day] = dob.split('-').map(Number);
+    const [hour, minute] = tob.split(':').map(Number);
+    const ut = hour + minute / 60;
+
+    // Convert to Julian day
+    const jd = swe_julday(year, month, day, ut);
+
+    // Get Moon position
+    const result = swe_calc_ut(jd, SE$MOON, SEFLG_SWIEPH);
+    const lonMoon = result[0]; // longitude in degrees
+
+    // Determine Rasi (Moon sign)
+    const signIndex = Math.floor(lonMoon / 30);
+    const moonSign = signs[signIndex];
+
+    document.getElementById('output').innerHTML = `
+      <strong>Moon Longitude:</strong> ${lonMoon.toFixed(2)}°<br>
+      <strong>Vedic Moon Sign (Rasi):</strong> ${moonSign}
+    `;
+  });
   </script>
 </body>
 </html>
