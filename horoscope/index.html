@@ -1,149 +1,322 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Astrology Micro App</title>
-<script src="https://cdn.jsdelivr.net/npm/swisseph-wasm@0.0.2/dist/swisseph.min.js"></script>
-
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Astrology Micro App — Vedic Moon (Swiss Ephemeris)</title>
 <style>
-body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f4f4f9; }
-header { background:#4CAF50; color:white; text-align:center; padding:1rem; }
-main { padding:2rem; }
-#birth-details { margin-bottom:2rem; text-align:center; }
-#charts, #predictions { display:flex; justify-content:space-around; flex-wrap:wrap; margin-bottom:2rem; }
-#charts > div, #predictions > div {
-  width:30%; padding:1rem; background:white; border-radius:8px;
-  box-shadow:0 4px 8px rgba(0,0,0,0.1); margin-bottom:1rem;
-}
-footer { text-align:center; padding:1rem; background:#333; color:white; }
+  body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#f4f4f9;color:#222}
+  header{background:#0b6b3a;color:#fff;padding:1rem;text-align:center}
+  main{padding:1.25rem;max-width:980px;margin:0 auto}
+  .row{display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;align-items:center}
+  label{min-width:70px}
+  input,select,button{padding:0.45rem;border-radius:6px;border:1px solid #ccc}
+  button{background:#0b6b3a;color:#fff;border:none;cursor:pointer}
+  .cards{display:flex;flex-wrap:wrap;gap:1rem}
+  .card{flex:1 1 30%;min-width:220px;background:#fff;padding:1rem;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.06)}
+  pre{background:#111;color:#bfb;padding:0.6rem;border-radius:6px;overflow:auto}
+  small.status{display:block;margin-top:0.4rem;color:#555}
+  @media (max-width:720px){.card{flex:1 1 100%}}
 </style>
 </head>
-
 <body>
 <header>
   <h1>Astrology Micro App</h1>
-  <p>Discover your Vedic, Western, and Chinese zodiac signs</p>
+  <div>Accurate Vedic Moon sign (from Swiss Ephemeris files) — fallback to API if needed</div>
 </header>
 
 <main>
-  <section id="birth-details">
-    <label>Date of Birth:</label>
-    <input type="date" id="dob">
-    <label>Time (HH:MM):</label>
-    <input type="time" id="time" value="12:00">
-    <label>Timezone (e.g., 5.5 for IST):</label>
-    <input type="number" step="0.1" id="tzone" value="5.5">
-    <button id="generateBtn">Generate Charts</button>
+  <section style="margin-bottom:1rem">
+    <div class="row">
+      <label for="dob">Date</label>
+      <input id="dob" type="date" />
+      <label for="time">Time</label>
+      <input id="time" type="time" value="12:00" />
+      <label for="tz">TZ (hrs)</label>
+      <input id="tz" type="number" step="0.25" value="5.5" />
+    </div>
+
+    <div class="row">
+      <label for="lat">Lat</label>
+      <input id="lat" type="number" step="0.01" value="13.08" />
+      <label for="lon">Lon</label>
+      <input id="lon" type="number" step="0.01" value="80.27" />
+      <button id="generate">Generate</button>
+      <button id="clearLog" style="background:#666;margin-left:0.25rem">Clear Log</button>
+    </div>
+
+    <small class="status" id="status">Status: ready</small>
   </section>
 
-  <section id="charts">
-    <div id="vedic-chart"></div>
-    <div id="western-chart"></div>
-    <div id="chinese-chart"></div>
+  <section class="cards">
+    <div class="card" id="vedicCard">
+      <h3>Vedic (Moon / Rasi)</h3>
+      <div id="vedicResult">—</div>
+      <small id="vedicHelp"></small>
+    </div>
+
+    <div class="card" id="westernCard">
+      <h3>Western (Sun)</h3>
+      <div id="westernResult">—</div>
+    </div>
+
+    <div class="card" id="chineseCard">
+      <h3>Chinese (Year)</h3>
+      <div id="chineseResult">—</div>
+    </div>
   </section>
 
-  <section id="predictions">
-    <div id="vedic-prediction"></div>
-    <div id="western-prediction"></div>
-    <div id="chinese-prediction"></div>
+  <section style="margin-top:1rem">
+    <h4>Debug / console</h4>
+    <pre id="log" style="height:220px"></pre>
+    <small>Note: If Swiss Ephemeris WASM loads successfully the app uses your hosted ephemeris files for real Moon longitude.</small>
   </section>
 </main>
 
-<footer><p>Simple Astrology Micro App</p></footer>
-
 <script>
+/*
+  NOTES:
+  - Place this file in the same folder as your .se1 files (e.g. https://zodiaclab.github.io/microapps/horoscope/index.html)
+  - EPHEMERIS_BASE should point to that folder URL (must end with /)
+  - The script attempts to load swisseph-wasm via CDN and then calls init({ephemerisPath})
+  - If WASM or ephemeris files fail to load, it falls back to the free astroapi.xyz endpoint (CORS permitting)
+*/
+
+const EPHEMERIS_BASE = "https://zodiaclab.github.io/microapps/horoscope/"; // <-- your folder URL
+const SWEPH_CDN = "https://cdn.jsdelivr.net/npm/swisseph-wasm@0.0.2/dist/swisseph.min.js"; // attempt
 const vedicRasis = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
-const simplePredictions = {
-  Vedic:"A period of personal growth and opportunity awaits you. Be careful with finances.",
-  Western:"Your energy and enthusiasm will attract good things. Stay focused on goals.",
-  Chinese:"Luck and prosperity are coming. Pay attention to relationships."
-};
-const westernZodiacs = [
-  { sign:"Aries", start:"03-21", end:"04-19" },
-  { sign:"Taurus", start:"04-20", end:"05-20" },
-  { sign:"Gemini", start:"05-21", end:"06-20" },
-  { sign:"Cancer", start:"06-21", end:"07-22" },
-  { sign:"Leo", start:"07-23", end:"08-22" },
-  { sign:"Virgo", start:"08-23", end:"09-22" },
-  { sign:"Libra", start:"09-23", end:"10-22" },
-  { sign:"Scorpio", start:"10-23", end:"11-21" },
-  { sign:"Sagittarius", start:"11-22", end:"12-21" },
-  { sign:"Capricorn", start:"12-22", end:"01-19" },
-  { sign:"Aquarius", start:"01-20", end:"02-18" },
-  { sign:"Pisces", start:"02-19", end:"03-20" }
+const westernRanges = [
+  { sign:"Aries", start:"03-21", end:"04-19" },{ sign:"Taurus", start:"04-20", end:"05-20" },
+  { sign:"Gemini", start:"05-21", end:"06-20" },{ sign:"Cancer", start:"06-21", end:"07-22" },
+  { sign:"Leo", start:"07-23", end:"08-22" },{ sign:"Virgo", start:"08-23", end:"09-22" },
+  { sign:"Libra", start:"09-23", end:"10-22" },{ sign:"Scorpio", start:"10-23", end:"11-21" },
+  { sign:"Sagittarius", start:"11-22", end:"12-21" },{ sign:"Capricorn", start:"12-22", end:"01-19" },
+  { sign:"Aquarius", start:"01-20", end:"02-18" },{ sign:"Pisces", start:"02-19", end:"03-20" }
 ];
 const chineseZodiacs = ["Rat","Ox","Tiger","Rabbit","Dragon","Snake","Horse","Goat","Monkey","Rooster","Dog","Pig"];
 
-// ✅ Initialize Swiss Ephemeris from your GitHub path
-async function initSwissEphemeris() {
-  await swisseph.init({
-    ephemerisPath: "https://zodiaclab.github.io/microapps/horoscope/"
-  });
-  await swisseph.loadWasm(); // Important: ensure WASM is ready
-  console.log("Swiss Ephemeris initialized");
+const statusEl = document.getElementById('status');
+const logEl = document.getElementById('log');
+const vedicResult = document.getElementById('vedicResult');
+const vedicHelp = document.getElementById('vedicHelp');
+const westernResult = document.getElementById('westernResult');
+const chineseResult = document.getElementById('chineseResult');
+
+function log(...args){
+  console.log(...args);
+  logEl.textContent += args.map(a => (typeof a === 'object' ? JSON.stringify(a,null,2) : String(a))).join(' ') + '\n';
+  logEl.scrollTop = logEl.scrollHeight;
 }
 
-function getVedicRasi(longitude) {
-  return vedicRasis[Math.floor(longitude / 30)];
+/* Utility: map longitude (0..360) -> vedic rasi */
+function longitudeToRasi(lon){
+  const idx = Math.floor(((lon % 360) + 360) % 360 / 30);
+  return { rasi: vedicRasis[idx], index: idx };
 }
 
-function getWesternZodiac(date) {
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  let sign = "Unknown";
-  westernZodiacs.forEach(z => {
-    const [sm, sd] = z.start.split("-").map(Number);
-    const [em, ed] = z.end.split("-").map(Number);
-    if ((month === sm && day >= sd) ||
-        (month === em && day <= ed) ||
-        (sm > em && ((month === sm && day >= sd) || (month === em && day <= ed)))) {
+/* Western zodiac from date */
+function getWesternZodiac(date){
+  const m = date.getMonth()+1, d = date.getDate();
+  let sign = 'Unknown';
+  westernRanges.forEach(z=>{
+    const [sm,sd]=z.start.split('-').map(Number);
+    const [em,ed]=z.end.split('-').map(Number);
+    if((m===sm && d>=sd) || (m===em && d<=ed) || (sm>em && ((m===sm && d>=sd)||(m===em && d<=ed)))){
       sign = z.sign;
     }
   });
   return sign;
 }
 
-function getChineseZodiac(date) {
-  return chineseZodiacs[(date.getFullYear() - 1900) % 12];
+/* Chinese zodiac from year */
+function getChineseZodiac(year){
+  return chineseZodiacs[(year - 1900) % 12];
 }
 
-// ✅ Main function
-async function generateCharts() {
-  const dob = document.getElementById("dob").value;
-  const time = document.getElementById("time").value || "12:00";
-  const tzone = parseFloat(document.getElementById("tzone").value) || 5.5;
-
-  if (!dob) { alert("Please enter your date of birth"); return; }
-
-  const [hour, min] = time.split(":").map(Number);
-  const d = new Date(dob);
-  d.setHours(hour);
-  d.setMinutes(min);
-
-  // Julian Day (Universal Time)
-  const jd = swisseph.julday(d.getFullYear(), d.getMonth() + 1, d.getDate(), hour - tzone + (min / 60), swisseph.SE_GREG_CAL);
-
-  // Calculate Moon longitude
-  const { xx } = await swisseph.calc(jd, swisseph.SE_MOON, swisseph.SEFLG_SWIEPH);
-  const moonLon = xx[0];
-  const vedicRasi = getVedicRasi(moonLon);
-
-  // Update sections
-  document.getElementById("vedic-chart").innerHTML = `<h3>Vedic Moon Sign</h3><p>${vedicRasi}</p><p>Longitude: ${moonLon.toFixed(2)}°</p>`;
-  document.getElementById("vedic-prediction").innerHTML = `<h4>Vedic Prediction</h4><p>${simplePredictions.Vedic} Moon Sign: <b>${vedicRasi}</b></p>`;
-
-  const western = getWesternZodiac(d);
-  document.getElementById("western-chart").innerHTML = `<h3>Western Zodiac</h3><p>${western}</p>`;
-  document.getElementById("western-prediction").innerHTML = `<h4>Western Prediction</h4><p>${simplePredictions.Western}</p>`;
-
-  const chinese = getChineseZodiac(d);
-  document.getElementById("chinese-chart").innerHTML = `<h3>Chinese Zodiac</h3><p>${chinese}</p>`;
-  document.getElementById("chinese-prediction").innerHTML = `<h4>Chinese Prediction</h4><p>${simplePredictions.Chinese}</p>`;
+/* Fallback: call astroapi.xyz for moon longitude if WASM fails */
+async function fetchMoonFromApi(year, month, day, time, lat, lon){
+  try {
+    const url = `https://api.astroapi.xyz/api/v1/planets?date=${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}&time=${time}&coordinates=${lat},${lon}`;
+    log('Calling fallback API:', url);
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('API returned ' + res.status);
+    const data = await res.json();
+    if(!data.planets) throw new Error('No planets in response');
+    const moon = data.planets.find(p => p.name === 'Moon' || p.body === 'Moon');
+    if(!moon) throw new Error('Moon not found in response');
+    const lonDeg = Number(moon.longitude);
+    return lonDeg;
+  } catch(err){
+    log('Fallback API failed:', err);
+    throw err;
+  }
 }
 
-document.getElementById("generateBtn").addEventListener("click", generateCharts);
-window.onload = initSwissEphemeris;
+/* Try to dynamically load swisseph-wasm script from CDN */
+function loadSwissScript(){
+  return new Promise((resolve, reject) => {
+    if(window.swisseph) { log('swisseph already present'); return resolve(window.swisseph); }
+    const s = document.createElement('script');
+    s.src = SWEPH_CDN + '?cache=' + Date.now();
+    s.onload = () => {
+      log('swisseph script loaded from CDN');
+      if(window.swisseph) resolve(window.swisseph);
+      else reject(new Error('swisseph global not available after load'));
+    };
+    s.onerror = (e) => reject(new Error('Failed to load swisseph script: ' + e.message));
+    document.head.appendChild(s);
+  });
+}
+
+/* Initialize Swiss Ephemeris (WASM) using your EPHEMERIS_BASE */
+async function tryInitSwiss(){
+  try {
+    statusEl.textContent = 'Status: loading swisseph-wasm (WASM)...';
+    log('Attempting to load swisseph-wasm from CDN');
+    await loadSwissScript();
+    // some builds require explicit loadWasm (older builds)
+    if(typeof swisseph.init !== 'function') throw new Error('swisseph.init not found');
+    log('Calling swisseph.init with ephemerisPath:', EPHEMERIS_BASE);
+    await swisseph.init({ ephemerisPath: EPHEMERIS_BASE });
+    // loadWasm may exist in some builds
+    if(typeof swisseph.loadWasm === 'function'){
+      log('Calling swisseph.loadWasm()');
+      await swisseph.loadWasm();
+    }
+    statusEl.textContent = 'Status: Swiss Ephemeris (WASM) initialized';
+    log('swisseph initialized OK');
+    return true;
+  } catch(err){
+    log('swisseph init failed:', err);
+    statusEl.textContent = 'Status: Swiss Ephemeris init failed — will fallback to API';
+    return false;
+  }
+}
+
+/* Compute moon longitude using WASM; returns degree or throws */
+async function computeMoonWithSwiss(dateObj, hourDecimalUTC){
+  // dateObj is JS Date in local timezone (we will use year,month,day)
+  const year = dateObj.getUTCFullYear();
+  const month = dateObj.getUTCMonth()+1;
+  const day = dateObj.getUTCDate();
+  // jd expects UT fractional hours parameter
+  const jd = swisseph.julday(year, month, day, hourDecimalUTC, swisseph.SE_GREG_CAL);
+  log('Julian day (UT):', jd);
+  // calc Moon
+  const res = await swisseph.calc(jd, swisseph.SE_MOON, swisseph.SEFLG_SWIEPH);
+  if(!res || !res.xx) throw new Error('swisseph.calc returned unexpected');
+  const moonLon = Number(res.xx[0]);
+  log('swisseph.calc result.xx[0]=', moonLon);
+  return moonLon;
+}
+
+/* Entry point when user clicks Generate */
+async function onGenerate(){
+  try {
+    logEl.textContent = ''; // clear log
+    vedicResult.textContent = '...';
+    vedicHelp.textContent = '';
+    westernResult.textContent = '...';
+    chineseResult.textContent = '...';
+    statusEl.textContent = 'Status: processing';
+
+    const dob = document.getElementById('dob').value;
+    const time = document.getElementById('time').value;
+    const tz = Number(document.getElementById('tz').value) || 0;
+    const lat = Number(document.getElementById('lat').value) || 0;
+    const lon = Number(document.getElementById('lon').value) || 0;
+
+    if(!dob || !time){ alert('Enter date and time'); statusEl.textContent='Status: waiting for input'; return; }
+    const [yyyy,mm,dd] = dob.split('-').map(Number);
+    const [hh,mi] = time.split(':').map(Number);
+
+    // Create a JS Date in UTC for given local time at supplied timezone:
+    // User inputs local birth time and timezone offset (e.g., 5.5 for IST).
+    // We'll compute UT hours decimal = localHour - tz (tz in hours)
+    const localHourDecimal = hh + (mi/60);
+    const utHourDecimal = localHourDecimal - tz; // UT fractional hours for that date
+    // Create a Date object for convenience (not used for JD calculations directly)
+    const dateForJS = new Date(Date.UTC(yyyy, mm-1, dd, hh, mi, 0));
+    log('Inputs:', { yyyy, mm, dd, hh, mi, tz, lat, lon, utHourDecimal });
+
+    // Try Swiss Ephemeris first if available
+    let moonLongitude = null;
+    if(window.swisseph){
+      try {
+        statusEl.textContent = 'Status: computing via Swiss Ephemeris (WASM)...';
+        moonLongitude = await computeMoonWithSwiss(dateForJS, utHourDecimal);
+        log('Moon longitude from Swiss:', moonLongitude);
+      } catch(err){
+        log('Swiss compute failed:', err);
+        moonLongitude = null;
+      }
+    } else {
+      log('swisseph not loaded, skipping Swiss compute');
+    }
+
+    // If swiss failed, try init then compute
+    if(moonLongitude === null){
+      const ok = await tryInitSwiss();
+      if(ok){
+        try {
+          statusEl.textContent = 'Status: computing via Swiss Ephemeris (WASM)...';
+          moonLongitude = await computeMoonWithSwiss(dateForJS, utHourDecimal);
+          log('Moon longitude from Swiss after init:', moonLongitude);
+        } catch(err){
+          log('Swiss compute after init failed:', err);
+          moonLongitude = null;
+        }
+      }
+    }
+
+    // Fallback to API if swiss not available
+    if(moonLongitude === null){
+      statusEl.textContent = 'Status: using fallback API for moon longitude';
+      try {
+        const fallbackLon = await fetchMoonFromApi(yyyy, mm, dd, time, lat, lon);
+        moonLongitude = fallbackLon;
+        log('Moon longitude from fallback API:', moonLongitude);
+      } catch(err){
+        vedicResult.textContent = 'Unavailable (both Swiss and API failed)';
+        vedicHelp.textContent = 'Check console and network. See log above.';
+        statusEl.textContent = 'Status: failed';
+        westernResult.textContent = getWesternZodiac(new Date(yyyy,mm-1,dd));
+        chineseResult.textContent = getChineseZodiac(yyyy);
+        return;
+      }
+    }
+
+    // Map to rasi
+    const { rasi, index } = longitudeToRasi(moonLongitude);
+    vedicResult.innerHTML = `<strong>${rasi}</strong><div>Moon longitude: ${moonLongitude.toFixed(4)}°</div><div>Rasi index: ${index+1} of 12</div>`;
+    vedicHelp.textContent = 'Moon in ' + rasi + ' (each sign 30° starting Aries 0°)';
+
+    // Western & Chinese independent
+    const western = getWesternZodiac(new Date(yyyy,mm-1,dd));
+    westernResult.textContent = western;
+    chineseResult.textContent = getChineseZodiac(yyyy);
+
+    statusEl.textContent = 'Status: done';
+    log('Done: rasi=', rasi, 'moonLon=', moonLongitude);
+  } catch(e){
+    log('Unexpected error in onGenerate:', e);
+    statusEl.textContent = 'Status: unexpected error (see log)';
+  }
+}
+
+/* Hook buttons */
+document.getElementById('generate').addEventListener('click', onGenerate);
+document.getElementById('clearLog').addEventListener('click', ()=> logEl.textContent = '');
+
+/* Try to pre-load swisseph script (optional) so user gets faster Swiss if available */
+(async function preload(){
+  try {
+    await loadSwissScript();
+    log('Preloaded swisseph script (does not mean ephemeris files loaded yet).');
+  } catch(err){
+    log('Preload of swisseph script failed (will attempt again on generate):', err);
+  }
+})();
 </script>
 </body>
 </html>
