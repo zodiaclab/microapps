@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quick Notes</title>
+<style>
+body {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(120deg, #a8edea, #fed6e3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+}
+header {
+  width: 100%;
+  background: #4CAF50;
+  color: white;
+  text-align: center;
+  padding: 1.5rem 1rem;
+  font-size: 1.5rem;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+.container {
+  width: 95%;
+  max-width: 600px;
+  background: white;
+  border-radius: 10px;
+  padding: 1rem;
+  margin-top: 2rem;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+textarea {
+  width: 95%;
+  height: 150px;
+  border: 1;
+  resize: none;
+  outline: none;
+  font-size: 1rem;
+  padding: 0.8rem;
+  border-radius: 8px;
+  background: #f7f7f7;
+}
+button {
+  margin-top: 1rem;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 0.7rem 1.2rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: 0.3s;
+}
+button:hover { background: #45a049; }
+.notes-list {
+  margin-top: 1rem;
+}
+.note {
+  background: #e8f5e9;
+  padding: 0.8rem;
+  margin-bottom: 0.5rem;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.note span {
+  flex-grow: 1;
+  margin-right: 8px;
+  word-break: break-word;
+}
+.note button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #555;
+  font-size: 1rem;
+}
+.note button:hover { color: #d32f2f; }
+footer {
+  margin-top: auto;
+  padding: 1rem;
+  text-align: center;
+  color: #555;
+  font-size: 0.9rem;
+}
+@media (max-width: 600px) {
+  header { font-size: 1.3rem; }
+  button { width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<header>📝 Quick Notes</header>
+
+<div class="container">
+  <textarea id="noteInput" placeholder="Write your note here..."></textarea>
+  <button onclick="addNote()">Add Note</button>
+  <div class="notes-list" id="notesList"></div>
+  <button style="background:#e53935;" onclick="clearAll()">Clear All Notes</button>
+</div>
+
+<footer>
+  <p>Offline Notes App — Stored Locally 💾</p>
+</footer>
+
+<script>
+let notes = [];
+
+// --- Load from localStorage on startup ---
+function loadNotes() {
+  const saved = localStorage.getItem("quickNotes");
+  if (saved) notes = JSON.parse(saved);
+  renderNotes();
+}
+
+// --- Save notes to localStorage ---
+function saveNotes() {
+  localStorage.setItem("quickNotes", JSON.stringify(notes));
+}
+
+// --- Add new note ---
+function addNote() {
+  const input = document.getElementById("noteInput");
+  const text = input.value.trim();
+  if (text === "") return alert("Write something before adding!");
+  const now = new Date();
+  const timestamp = `${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+  notes.push({ text, timestamp });
+  input.value = "";
+  saveNotes();
+  renderNotes();
+}
+
+// --- Delete specific note ---
+function deleteNote(index) {
+  notes.splice(index, 1);
+  saveNotes();
+  renderNotes();
+}
+
+// --- Clear all notes ---
+function clearAll() {
+  if (confirm("Are you sure you want to delete all notes?")) {
+    notes = [];
+    saveNotes();
+    renderNotes();
+  }
+}
+
+// --- Edit note (inline) ---
+function editNote(index, element) {
+  notes[index].text = element.textContent.trim();
+  saveNotes();
+}
+
+// --- Render all notes ---
+function renderNotes() {
+  const list = document.getElementById("notesList");
+  list.innerHTML = "";
+  notes.forEach((note, i) => {
+    const div = document.createElement("div");
+    div.className = "note";
+    div.innerHTML = `
+      <span contenteditable="true" onblur="editNote(${i}, this)">${note.text}</span>
+      <small style="font-size:0.75rem; color:#555;">${note.timestamp}</small>
+      <button onclick="deleteNote(${i})">❌</button>
+    `;
+    list.appendChild(div);
+  });
+}
+
+loadNotes();
+</script>
+
+</body>
+</html>
