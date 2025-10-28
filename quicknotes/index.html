@@ -4,38 +4,71 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Quick Notes</title>
+<link rel="manifest" href="manifest.json">
 <style>
+:root {
+  --bg-light: #fdfdfd;
+  --bg-dark: #1f1f1f;
+  --text-light: #1f1f1f;
+  --text-dark: #fdfdfd;
+  --accent: #4CAF50;
+  --note-bg-light: #e8f5e9;
+  --note-bg-dark: #333;
+}
 body {
   margin: 0;
   font-family: 'Poppins', sans-serif;
-  background: linear-gradient(120deg, #a8edea, #fed6e3);
+  background: var(--bg-light);
+  color: var(--text-light);
   display: flex;
   flex-direction: column;
   align-items: center;
   min-height: 100vh;
+  transition: all 0.3s ease;
+}
+body.dark {
+  background: var(--bg-dark);
+  color: var(--text-dark);
 }
 header {
   width: 100%;
-  background: #4CAF50;
+  background: var(--accent);
   color: white;
   text-align: center;
-  padding: 1.5rem 1rem;
+  padding: 1.2rem 1rem;
   font-size: 1.5rem;
+  position: relative;
   box-shadow: 0 2px 10px rgba(0,0,0,0.2);
 }
+#themeToggle {
+  position: absolute;
+  right: 15px;
+  top: 10px;
+  background: rgba(255,255,255,0.2);
+  border: none;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+#themeToggle:hover { background: rgba(255,255,255,0.4); }
+
 .container {
   width: 95%;
-  max-width: 600px;
+  max-width: 650px;
   background: white;
   border-radius: 10px;
   padding: 1rem;
   margin-top: 2rem;
   box-shadow: 0 5px 15px rgba(0,0,0,0.1);
 }
+body.dark .container {
+  background: #2b2b2b;
+}
 textarea {
-  width: 95%;
+  width: 100%;
   height: 150px;
-  border: 1;
+  border: none;
   resize: none;
   outline: none;
   font-size: 1rem;
@@ -43,9 +76,13 @@ textarea {
   border-radius: 8px;
   background: #f7f7f7;
 }
+body.dark textarea {
+  background: #444;
+  color: #fdfdfd;
+}
 button {
-  margin-top: 1rem;
-  background: #4CAF50;
+  margin-top: 0.5rem;
+  background: var(--accent);
   color: white;
   border: none;
   padding: 0.7rem 1.2rem;
@@ -59,14 +96,16 @@ button:hover { background: #45a049; }
   margin-top: 1rem;
 }
 .note {
-  background: #e8f5e9;
+  background: var(--note-bg-light);
   padding: 0.8rem;
   margin-bottom: 0.5rem;
   border-radius: 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
 }
+body.dark .note { background: var(--note-bg-dark); }
 .note span {
   flex-grow: 1;
   margin-right: 8px;
@@ -87,94 +126,175 @@ footer {
   color: #555;
   font-size: 0.9rem;
 }
+.dark footer { color: #aaa; }
+.search-bar {
+  width: 100%;
+  padding: 0.6rem;
+  margin: 0.5rem 0;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  outline: none;
+}
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: space-between;
+  margin-top: 0.8rem;
+}
+#fileInput {
+  display: none;
+}
 @media (max-width: 600px) {
-  header { font-size: 1.3rem; }
   button { width: 100%; }
+  .tools { flex-direction: column; align-items: stretch; }
 }
 </style>
 </head>
 <body>
 
-<header>📝 Quick Notes</header>
+<header>
+  📝 Quick Notes
+  <button id="themeToggle">🌙</button>
+</header>
 
 <div class="container">
   <textarea id="noteInput" placeholder="Write your note here..."></textarea>
   <button onclick="addNote()">Add Note</button>
+  <input type="text" id="searchBar" class="search-bar" placeholder="🔍 Search notes..." oninput="filterNotes()">
+  
+  <div class="tools">
+    <button onclick="exportNotes()">⬇️ Export JSON</button>
+    <button onclick="document.getElementById('fileInput').click()">⬆️ Import JSON</button>
+    <input type="file" id="fileInput" accept=".json" onchange="importNotes(event)">
+    <button style="background:#e53935;" onclick="clearAll()">🗑️ Clear All</button>
+  </div>
+
   <div class="notes-list" id="notesList"></div>
-  <button style="background:#e53935;" onclick="clearAll()">Clear All Notes</button>
 </div>
 
 <footer>
-  <p>Offline Notes App — Stored Locally 💾</p>
+  <p>Offline Notes App — LocalStorage + Dark Mode + Installable (PWA) 💾</p>
 </footer>
 
 <script>
 let notes = [];
+let darkMode = false;
 
-// --- Load from localStorage on startup ---
+// Load saved notes + theme
 function loadNotes() {
   const saved = localStorage.getItem("quickNotes");
   if (saved) notes = JSON.parse(saved);
   renderNotes();
+
+  darkMode = localStorage.getItem("darkMode") === "true";
+  if (darkMode) document.body.classList.add("dark");
+  updateThemeButton();
 }
 
-// --- Save notes to localStorage ---
-function saveNotes() {
-  localStorage.setItem("quickNotes", JSON.stringify(notes));
-}
+// Save notes
+function saveNotes() { localStorage.setItem("quickNotes", JSON.stringify(notes)); }
 
-// --- Add new note ---
+// Add note
 function addNote() {
-  const input = document.getElementById("noteInput");
-  const text = input.value.trim();
-  if (text === "") return alert("Write something before adding!");
-  const now = new Date();
-  const timestamp = `${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+  const text = document.getElementById("noteInput").value.trim();
+  if (!text) return alert("Write something first!");
+  const timestamp = new Date().toLocaleString();
   notes.push({ text, timestamp });
-  input.value = "";
-  saveNotes();
-  renderNotes();
+  document.getElementById("noteInput").value = "";
+  saveNotes(); renderNotes();
 }
 
-// --- Delete specific note ---
-function deleteNote(index) {
-  notes.splice(index, 1);
-  saveNotes();
-  renderNotes();
-}
+// Delete
+function deleteNote(i) { notes.splice(i, 1); saveNotes(); renderNotes(); }
 
-// --- Clear all notes ---
+// Clear all
 function clearAll() {
-  if (confirm("Are you sure you want to delete all notes?")) {
-    notes = [];
-    saveNotes();
-    renderNotes();
-  }
+  if (confirm("Delete all notes?")) { notes = []; saveNotes(); renderNotes(); }
 }
 
-// --- Edit note (inline) ---
-function editNote(index, element) {
-  notes[index].text = element.textContent.trim();
-  saveNotes();
+// Edit
+function editNote(i, el) { notes[i].text = el.textContent.trim(); saveNotes(); }
+
+// Search
+function filterNotes() {
+  const q = document.getElementById("searchBar").value.toLowerCase();
+  const f = notes.filter(n => n.text.toLowerCase().includes(q));
+  renderNotes(f);
 }
 
-// --- Render all notes ---
-function renderNotes() {
-  const list = document.getElementById("notesList");
-  list.innerHTML = "";
-  notes.forEach((note, i) => {
-    const div = document.createElement("div");
-    div.className = "note";
-    div.innerHTML = `
-      <span contenteditable="true" onblur="editNote(${i}, this)">${note.text}</span>
-      <small style="font-size:0.75rem; color:#555;">${note.timestamp}</small>
-      <button onclick="deleteNote(${i})">❌</button>
-    `;
-    list.appendChild(div);
+// Export
+function exportNotes() {
+  const blob = new Blob([JSON.stringify(notes, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "quick_notes_backup.json"; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Import (Merge, not Replace)
+function importNotes(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const imported = JSON.parse(ev.target.result);
+      if (Array.isArray(imported)) {
+        // ✅ Merge without duplicates
+        const existingTexts = new Set(notes.map(n => n.text.trim()));
+        imported.forEach(n => {
+          if (n.text && !existingTexts.has(n.text.trim())) {
+            notes.push({
+              text: n.text.trim(),
+              timestamp: n.timestamp || new Date().toLocaleString()
+            });
+          }
+        });
+        saveNotes(); renderNotes();
+        alert("✅ Imported and merged successfully!");
+      } else {
+        alert("❌ Invalid JSON format!");
+      }
+    } catch {
+      alert("⚠️ Error reading JSON file!");
+    }
+  };
+  reader.readAsText(file);
+}
+
+// Render
+function renderNotes(list = notes) {
+  const c = document.getElementById("notesList");
+  c.innerHTML = "";
+  if (!list.length) return c.innerHTML = "<p style='text-align:center;color:#777;'>No notes yet...</p>";
+  list.forEach((n,i)=>{
+    const d = document.createElement("div");
+    d.className = "note";
+    d.innerHTML = `
+      <span contenteditable="true" onblur="editNote(${i}, this)">${n.text}</span>
+      <small style="font-size:0.75rem;color:#777;">${n.timestamp}</small>
+      <button onclick="deleteNote(${i})">❌</button>`;
+    c.appendChild(d);
   });
 }
 
+// Dark mode toggle
+document.getElementById("themeToggle").addEventListener("click", ()=>{
+  document.body.classList.toggle("dark");
+  darkMode = document.body.classList.contains("dark");
+  localStorage.setItem("darkMode", darkMode);
+  updateThemeButton();
+});
+function updateThemeButton(){ document.getElementById("themeToggle").textContent = darkMode ? "☀️" : "🌙"; }
+
 loadNotes();
+
+// PWA registration
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js");
+}
 </script>
 
 </body>
