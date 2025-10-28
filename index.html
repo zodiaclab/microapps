@@ -32,6 +32,14 @@
       color: #cdd4d9;
     }
 
+    .section-intro {
+      max-width: 800px;
+      text-align: justify;
+      padding: 20px;
+      font-size: 1rem;
+      color: #d1d8dd;
+    }
+
     .app-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -64,6 +72,27 @@
       padding: 20px;
       font-size: 0.9rem;
       color: #b8c3ca;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+    }
+
+    footer a {
+      color: #b8c3ca;
+      text-decoration: none;
+      transition: 0.2s;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    .section-title {
+      font-size: 1.5rem;
+      margin: 30px 0 10px;
+      text-align: center;
+      color: #ffffff;
     }
   </style>
 </head>
@@ -74,7 +103,7 @@
   </header>
 
   <main class="app-grid">
-    <!-- 🔗 Add new apps below -->
+    <!-- 🔗 Existing apps -->
     <a href="invoice/" class="card">🧾 Invoice Generator</a>
     <a href="calendar/" class="card">📅 Smart Calendar</a>
     <a href="rephrase/" class="card">📝 Rephrase Tool</a>
@@ -83,9 +112,50 @@
     <a href="weather/" class="card">☀️ Weather Widget</a>
     <a href="resumebuilder/" class="card">📝 Resume Builder</a>
     <a href="lottery/" class="card">🎟️ Lottery Draw</a>
-    <!-- Add more links as needed -->
   </main>
 
-  <footer>© 2025 ZodiacLab · All rights reserved.</footer>
+  <!-- Company intro -->
+  <div class="section-intro">
+    ZodiacLab is specialized in the development of smart and practical micro-applications that address everyday problems and business requirements. From simple utilities like invoice generators, calendars, resume builders, and weather reporting tools to complex solutions for enterprise-level operations, ZodiacLab delivers software that is functional, efficient, and user-friendly. By combining creativity with technical expertise, the company enables individuals, students, small businesses, and large organizations to leverage technology to simplify their daily workflows and enhance productivity. <i>“Empowering innovation: technology built AI, now AI builds technology.”!</i>
+  </div>
+
+  <!-- More Applications Section -->
+<h2 class="section-title">More Applications</h2>
+<div style="text-align:center; margin-bottom:10px;">
+  <button id="toggleApps" class="card" style="cursor:pointer; width:auto; display:inline-block; padding:10px 20px;">
+    Show More Apps ▼
+  </button>
+</div>
+
+<div id="moreApps" class="app-grid" style="display:none;">
+  <a href="notes/" class="card">🗒️ Quick Notes</a>
+  <a href="calculator/" class="card">🧮 Simple Calculator</a>
+  <a href="todo/" class="card">✅ To-Do List</a>
+  <a href="timer/" class="card">⏱️ Countdown Timer</a>
+  <!-- Add more cards if needed -->
+</div>
+
+<script>
+  const toggleBtn = document.getElementById("toggleApps");
+  const moreAppsDiv = document.getElementById("moreApps");
+
+  toggleBtn.addEventListener("click", () => {
+    if (moreAppsDiv.style.display === "none") {
+      moreAppsDiv.style.display = "grid";
+      toggleBtn.textContent = "Hide Apps ▲";
+    } else {
+      moreAppsDiv.style.display = "none";
+      toggleBtn.textContent = "Show More Apps ▼";
+    }
+  });
+</script>
+  <footer>
+    <a href="#">About Us</a>
+    <a href="#">Contact Us</a>
+    <a href="#">Training</a>
+    <a href="#">Privacy Policy</a>
+    <a href="#">Terms of Service</a>
+    <span>© 2025 ZodiacLab · All rights reserved.</span>
+  </footer>
 </body>
 </html>
