@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Calendar App</title>
+<style>
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: #f4f4f9;
+  margin: 0;
+  color: #333;
+}
+header {
+  background: linear-gradient(90deg, #4CAF50, #388E3C);
+  color: white;
+  text-align: center;
+  padding: 1.5rem;
+}
+main {
+  padding: 1.5rem;
+  max-width: 900px;
+  margin: auto;
+}
+.calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  text-align: center;
+}
+.day, .day-header {
+  background: white;
+  border-radius: 8px;
+  padding: 0.8rem;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+.day-header {
+  background: #4CAF50;
+  color: white;
+  font-weight: bold;
+}
+.day {
+  cursor: pointer;
+  position: relative;
+  min-height: 80px;
+}
+.day:hover {
+  background: #e8f5e9;
+}
+.event {
+  background: #81C784;
+  color: white;
+  font-size: 0.8rem;
+  border-radius: 5px;
+  padding: 2px 5px;
+  margin-top: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.event button {
+  background: transparent;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+#eventModal {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: none; justify-content: center; align-items: center;
+}
+.modal-content {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 10px;
+  width: 300px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+button {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 0.6rem 1rem;
+  margin-top: 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+button:hover { background: #45a049; }
+@media (max-width: 600px){
+  .calendar { grid-template-columns: repeat(7, 1fr); font-size: 0.8rem; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🧠 Smart Calendar!</h1>
+  <p>Plan your days — add, edit, or delete events</p>
+</header>
+
+<main>
+  <h2 id="monthYear"></h2>
+  <div class="calendar" id="calendar"></div>
+</main>
+
+<!-- Modal -->
+<div id="eventModal">
+  <div class="modal-content">
+    <h3 id="modalTitle">Add Event</h3>
+    <p id="selectedDate"></p>
+    <input type="text" id="eventTitle" placeholder="Event Title" style="width:100%; padding:5px;">
+    <button onclick="saveEvent()">Save</button>
+    <button onclick="closeModal()" style="background:#999;">Cancel</button>
+  </div>
+</div>
+
+<script>
+const calendar = document.getElementById('calendar');
+const monthYear = document.getElementById('monthYear');
+const modal = document.getElementById('eventModal');
+const eventTitle = document.getElementById('eventTitle');
+const selectedDate = document.getElementById('selectedDate');
+const modalTitle = document.getElementById('modalTitle');
+
+let currentDate = new Date();
+let selectedDay = null;
+let editIndex = null;
+
+function renderCalendar(){
+  calendar.innerHTML = '';
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  monthYear.textContent = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+  // Weekday headers
+  const weekDays = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  weekDays.forEach(d=>{
+    const div = document.createElement('div');
+    div.classList.add('day-header');
+    div.textContent = d;
+    calendar.appendChild(div);
+  });
+
+  for(let i=0; i<firstDay; i++){
+    const empty = document.createElement('div');
+    empty.classList.add('day');
+    calendar.appendChild(empty);
+  }
+
+  for(let day=1; day<=daysInMonth; day++){
+    const div = document.createElement('div');
+    div.classList.add('day');
+    div.textContent = day;
+
+    const key = `${year}-${month+1}-${day}`;
+    const events = JSON.parse(localStorage.getItem(key)) || [];
+    events.forEach((e, index)=>{
+      const ev = document.createElement('div');
+      ev.classList.add('event');
+      ev.innerHTML = `
+        <span>${e}</span>
+        <div>
+          <button onclick="editEvent('${key}', ${index})">✏️</button>
+          <button onclick="deleteEvent('${key}', ${index})">🗑️</button>
+        </div>
+      `;
+      div.appendChild(ev);
+    });
+
+    div.onclick = ()=>openModal(key, day);
+    calendar.appendChild(div);
+  }
+}
+
+function openModal(key, day){
+  selectedDay = key;
+  editIndex = null;
+  modalTitle.textContent = "Add Event";
+  selectedDate.textContent = `Date: ${key}`;
+  eventTitle.value = '';
+  modal.style.display = 'flex';
+}
+
+function closeModal(){
+  modal.style.display = 'none';
+}
+
+function saveEvent(){
+  const title = eventTitle.value.trim();
+  if(title===''){ alert('Please enter an event title'); return; }
+  const events = JSON.parse(localStorage.getItem(selectedDay)) || [];
+  if(editIndex !== null){
+    events[editIndex] = title; // update
+  } else {
+    events.push(title);
+  }
+  localStorage.setItem(selectedDay, JSON.stringify(events));
+  closeModal();
+  renderCalendar();
+}
+
+function deleteEvent(key, index){
+  const events = JSON.parse(localStorage.getItem(key)) || [];
+  events.splice(index, 1);
+  localStorage.setItem(key, JSON.stringify(events));
+  renderCalendar();
+}
+
+function editEvent(key, index){
+  const events = JSON.parse(localStorage.getItem(key)) || [];
+  selectedDay = key;
+  editIndex = index;
+  eventTitle.value = events[index];
+  modalTitle.textContent = "Edit Event";
+  selectedDate.textContent = `Editing ${key}`;
+  modal.style.display = 'flex';
+}
+
+renderCalendar();
+</script>
+
+</body>
+</html>
