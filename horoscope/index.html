@@ -3,36 +3,160 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Astrology Micro App</title>
+<title>Astrology & Numerology Micro App</title>
 <style>
-body { font-family: Arial, sans-serif; background:#f4f4f9; color:#222; text-align:center; padding:30px; }
-.container { max-width:500px; margin:auto; background:#fff; padding:30px; border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,0.1); }
-input, button { width:100%; padding:10px; margin:6px 0; border-radius:6px; border:1px solid #ccc; }
-button { background:#4caf50; color:#fff; cursor:pointer; transition:0.3s; }
-button:hover { background:#45a049; }
-.result { margin-top:20px; font-size:1.1em; }
+  :root {
+    --primary-color: #4CAF50;
+    --bg-color: #f4f4f9;
+    --text-color: #333;
+  }
+
+  body {
+    font-family: "Segoe UI", Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: var(--bg-color);
+    color: var(--text-color);
+  }
+
+  header {
+    background: var(--primary-color);
+    color: white;
+    text-align: center;
+    padding: 1rem;
+  }
+
+  main {
+    padding: 2rem 1rem;
+    max-width: 1200px;
+    margin: auto;
+  }
+
+  #birth-details {
+    margin-bottom: 2rem;
+    text-align: center;
+  }
+
+  #birth-details input[type="date"] {
+    padding: 0.5rem;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+  }
+
+  #birth-details button {
+    padding: 0.6rem 1.2rem;
+    margin-left: 0.5rem;
+    border: none;
+    border-radius: 5px;
+    background: var(--primary-color);
+    color: white;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+
+  #birth-details button:hover {
+    background: #45a049;
+  }
+
+  .flex-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+  }
+
+  .card {
+    flex: 1 1 300px;
+    max-width: 350px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    padding: 1.2rem;
+    text-align: center;
+    transition: transform 0.2s;
+  }
+
+  .card:hover {
+    transform: translateY(-3px);
+  }
+
+  h3, h4 {
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+  }
+
+  p {
+    margin: 0.4rem 0;
+    line-height: 1.4;
+  }
+
+  footer {
+    text-align: center;
+    padding: 1rem;
+    background: #333;
+    color: white;
+  }
+
+  @media (max-width: 768px) {
+    main {
+      padding: 1rem;
+    }
+    .card {
+      flex: 1 1 100%;
+      max-width: 100%;
+    }
+  }
+
+  @media (max-width: 480px) {
+    header h1 {
+      font-size: 1.5rem;
+    }
+    #birth-details button, #birth-details input {
+      width: 90%;
+      margin-top: 0.5rem;
+    }
+  }
 </style>
 </head>
 <body>
-<div class="container">
-  <h2>🌕 Astrology Micro App</h2>
-  <p>Enter your birth details</p>
 
-  <input type="date" id="dob">
-  <input type="time" id="tob" value="12:00">
-  <input type="number" id="lat" placeholder="Latitude (e.g. 13.08)">
-  <input type="number" id="lon" placeholder="Longitude (e.g. 80.27)">
-  <button id="calcBtn">Calculate Charts</button>
+<header>
+  <h1>Astrology & Numerology Micro App</h1>
+  <p>Discover your Numerology, Western, Chinese, and Today's Predictions</p>
+</header>
 
-  <div class="result" id="output"></div>
-</div>
+<main>
+  <section id="birth-details">
+    <label for="dob">Enter your Date of Birth:</label><br><br>
+    <input type="date" id="dob">
+    <button onclick="generateCharts()">Generate Details</button>
+  </section>
 
-<script type="module">
-// Load the required astronomy library from CDN
-import { julian, moonposition } from "https://cdn.jsdelivr.net/npm/astronomia@1.12.0/dist/astronomia.esm.js";
+  <section id="charts" class="flex-container">
+    <div id="numerology-chart" class="card"></div>
+    <div id="western-chart" class="card"></div>
+    <div id="chinese-chart" class="card"></div>
+  </section>
 
-// Zodiac tables
-const vedicRasis = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"];
+  <section id="predictions" class="flex-container">
+    <div id="numerology-prediction" class="card"></div>
+    <div id="western-prediction" class="card"></div>
+    <div id="chinese-prediction" class="card"></div>
+  </section>
+
+  <section id="today" class="flex-container">
+    <div id="today-prediction" class="card"></div>
+  </section>
+</main>
+
+<footer>
+  <p>© Zodiaclab Astro Numerology Micro App</p>
+</footer>
+
+<script>
+// Western zodiac data
 const westernZodiacs = [
   { sign:"Aries", start:"03-21", end:"04-19" },
   { sign:"Taurus", start:"04-20", end:"05-20" },
@@ -47,60 +171,133 @@ const westernZodiacs = [
   { sign:"Aquarius", start:"01-20", end:"02-18" },
   { sign:"Pisces", start:"02-19", end:"03-20" }
 ];
-const chineseZodiacs = ["Rat","Ox","Tiger","Rabbit","Dragon","Snake","Horse","Goat","Monkey","Rooster","Dog","Pig"];
 
-const simplePredictions = {
-  Vedic:"A period of personal growth and opportunity awaits you. Be careful with finances.",
-  Western:"Your energy and enthusiasm will attract good things. Stay focused on goals.",
-  Chinese:"Luck and prosperity are coming. Pay attention to relationships."
+// Western Zodiac predictions
+const westernPredictions = {
+  Aries:"New beginnings and energy surround you. Take charge but avoid impulsive moves.",
+  Taurus:"Patience pays off. Stability and comfort are your allies in both love and career.",
+  Gemini:"Communication brings new opportunities. Stay adaptable and curious.",
+  Cancer:"Emotions guide your success today. Nurture relationships and stay calm.",
+  Leo:"Confidence shines bright. Recognition and joy come from creative efforts.",
+  Virgo:"Clarity and organization will help you achieve goals efficiently.",
+  Libra:"Balance is key. Focus on harmony in both personal and professional life.",
+  Scorpio:"Intense focus brings transformation. Trust your instincts.",
+  Sagittarius:"Adventure and optimism light your path. A good day to plan or travel.",
+  Capricorn:"Hard work yields steady progress. Stay consistent and patient.",
+  Aquarius:"Innovation thrives today. New ideas can lead to long-term rewards.",
+  Pisces:"Dreams and intuition guide you. Stay grounded while expressing creativity."
 };
 
-function getVedicRasi(lon){
-  const idx = Math.floor(lon/30);
-  return vedicRasis[idx];
+// Chinese zodiac signs & predictions
+const chineseZodiacs = ["Rat","Ox","Tiger","Rabbit","Dragon","Snake","Horse","Goat","Monkey","Rooster","Dog","Pig"];
+const chinesePredictions = {
+  Rat:"Quick thinking leads to progress. Manage your energy wisely today.",
+  Ox:"Steadiness and reliability win hearts. Focus on long-term gains.",
+  Tiger:"Courage and confidence bring breakthroughs. Avoid unnecessary risks.",
+  Rabbit:"Kindness and diplomacy bring peace. Good for partnerships.",
+  Dragon:"Charisma attracts success. Use power gently to inspire others.",
+  Snake:"Wisdom and patience are your strengths. A calm approach wins ever.",
+  Horse:"Freedom and movement energize you. Follow your passion with focus.",
+  Goat:"Compassion brings joy. Handle emotions delicately for harmony.",
+  Monkey:"Your cleverness shines today. Stay flexible for quick wins.",
+  Rooster:"Attention to detail ensures success. Express your ideas clearly.",
+  Dog:"Loyalty and honesty guide you. Build trust through integrity.",
+  Pig:"Generosity attracts abundance. Celebrate your achievements humbly."
+};
+
+// Numerology Predictions
+const numerologyData = {
+  1:{ planet:"☀️ Sun", prediction:"Leadership and confidence define you. Trust your instincts and take the initiative.", luckyNumbers:[1,10,19,28], luckyStone:"Ruby" },
+  2:{ planet:"🌙 Moon", prediction:"Intuitive and emotional, you find strength in relationships and creativity.", luckyNumbers:[2,11,20,29], luckyStone:"Pearl" },
+  3:{ planet:"🔥 Mars", prediction:"Courage and enthusiasm bring success. Channel energy into constructive actions.", luckyNumbers:[3,12,21,30], luckyStone:"Red Coral" },
+  4:{ planet:"☊ Rahu", prediction:"Hard work and persistence bring rewards. Be flexible during sudden shifts.", luckyNumbers:[4,13,22,31], luckyStone:"Hessonite (Gomed)" },
+  5:{ planet:"🪶 Mercury", prediction:"Adaptable and witty, you excel in communication and learning today.", luckyNumbers:[5,14,23,32], luckyStone:"Emerald" },
+  6:{ planet:"💎 Venus", prediction:"Love, art, and luxury guide your joy. Create beauty in all you do.", luckyNumbers:[6,15,24,33], luckyStone:"Diamond" },
+  7:{ planet:"🔮 Ketu", prediction:"Spiritual depth brings insight. Spend time reflecting and meditating.", luckyNumbers:[7,16,25,34], luckyStone:"Cat’s Eye" },
+  8:{ planet:"♄ Saturn", prediction:"Discipline and effort build your future. Stay patient and focused.", luckyNumbers:[8,17,26,35], luckyStone:"Blue Sapphire" },
+  9:{ planet:"🔥 Mars", prediction:"Passion and determination define you. Lead with purpose and compassion.", luckyNumbers:[9,18,27,36], luckyStone:"Red Coral" }
+};
+
+// Helper to get single-digit numerology number
+function getNumerologyNumber(dob){
+  const digits = dob.replace(/-/g,"").split("").map(Number);
+  let sum = digits.reduce((a,b)=>a+b,0);
+  while(sum > 9) sum = sum.toString().split("").map(Number).reduce((a,b)=>a+b,0);
+  return sum;
 }
 
-function getWesternSign(month, day){
-  let sign = "Unknown";
+// Generate random daily prediction
+// Same random message for everyone for the same day
+function getTodayPrediction(){
+  const messages = [
+    "A good day to focus on self-growth and clarity.",
+    "Unexpected joy arrives from a familiar source.",
+    "Keep patience; long-term plans start showing results.",
+    "Positive communication brings good results today.",
+    "Trust your intuition — it’s guiding you toward success.",
+    "Your ideas may attract attention — speak up confidently.",
+    "A calm approach will help you resolve a tricky issue.",
+    "Small achievements today lead to major success soon.",
+    "A surprise opportunity could bring growth and happiness.",
+    "Stay grounded; success comes with steady effort."
+  ];
+  const seed = new Date().toDateString().split("").reduce((a,b)=>a+b.charCodeAt(0),0);
+  const randomIndex = seed % messages.length;
+  return messages[randomIndex];
+}
+
+function generateCharts(){
+  const dob = document.getElementById("dob").value;
+  if(!dob){ alert("Please enter your date of birth"); return; }
+
+  const d = new Date(dob);
+  const month = d.getMonth()+1;
+  const day = d.getDate();
+  const year = d.getFullYear();
+
+  // --- Numerology ---
+  const num = getNumerologyNumber(dob);
+  const data = numerologyData[num];
+  document.getElementById("numerology-chart").innerHTML = `
+    <h3>Numerology Number</h3>
+    <p><strong>${num}</strong> - Ruled by ${data.planet}</p>`;
+  document.getElementById("numerology-prediction").innerHTML = `
+    <h4>Numerology Prediction</h4>
+    <p>${data.prediction}</p>
+    <p><strong>Lucky Numbers:</strong> ${data.luckyNumbers.join(", ")}</p>
+    <p><strong>Lucky Stone:</strong> ${data.luckyStone}</p>`;
+
+  // --- Western Zodiac ---
+  let westernSign = "Unknown";
   westernZodiacs.forEach(z=>{
-    let [startM,startD]=z.start.split("-").map(Number);
-    let [endM,endD]=z.end.split("-").map(Number);
-    if((month===startM && day>=startD) || (month===endM && day<=endD) ||
-       (startM>endM && ((month===startM && day>=startD)||(month===endM && day<=endD)))){
-      sign=z.sign;
+    let [startM,startD] = z.start.split("-").map(Number);
+    let [endM,endD] = z.end.split("-").map(Number);
+    if( (month===startM && day>=startD) || (month===endM && day<=endD) ||
+        (startM>endM && ((month===startM && day>=startD) || (month===endM && day<=endD))) ){
+      westernSign = z.sign;
     }
   });
-  return sign;
+  document.getElementById("western-chart").innerHTML = `
+    <h3>Western Zodiac</h3><p>${westernSign}</p>`;
+  document.getElementById("western-prediction").innerHTML = `
+    <h4>${westernSign} Prediction</h4>
+    <p>${westernPredictions[westernSign]}</p>`;
+
+  // --- Chinese Zodiac ---
+  const chineseSign = chineseZodiacs[(year-1900)%12];
+  document.getElementById("chinese-chart").innerHTML = `
+    <h3>Chinese Zodiac</h3><p>${chineseSign}</p>`;
+  document.getElementById("chinese-prediction").innerHTML = `
+    <h4>${chineseSign} Prediction</h4>
+    <p>${chinesePredictions[chineseSign]}</p>`;
+
+  // --- Today's Prediction ---
+  const todayMsg = getTodayPrediction();
+  document.getElementById("today-prediction").innerHTML = `
+    <h3>🌞 Today's Prediction</h3>
+    <p>${todayMsg}</p>`;
 }
-
-document.getElementById('calcBtn').addEventListener('click', ()=>{
-  const dob=document.getElementById('dob').value;
-  const tob=document.getElementById('tob').value || "12:00";
-  const lat=parseFloat(document.getElementById('lat').value)||13.08;
-  const lon=parseFloat(document.getElementById('lon').value)||80.27;
-
-  if(!dob){ alert("Please enter date of birth"); return; }
-
-  const [y,m,d]=dob.split("-").map(Number);
-  const [hh,mm]=tob.split(":").map(Number);
-  const jd = julian.CalendarGregorianToJD(y, m, d) + (hh + mm/60)/24;
-
-  // Moon position using astronomy library
-  const moonLon = moonposition.position(jd).lon * (180/Math.PI); // radians → degrees
-  const vedicSign = getVedicRasi(moonLon);
-  const westernSign = getWesternSign(m, d);
-  const chineseSign = chineseZodiacs[(y-1900)%12];
-
-  document.getElementById('output').innerHTML=`
-    <strong>Vedic Moon Sign:</strong> ${vedicSign} (${moonLon.toFixed(2)}°)<br>
-    <strong>Western Zodiac:</strong> ${westernSign}<br>
-    <strong>Chinese Zodiac:</strong> ${chineseSign}<br><br>
-    <strong>Predictions:</strong><br>
-    Vedic: ${simplePredictions.Vedic}<br>
-    Western: ${simplePredictions.Western}<br>
-    Chinese: ${simplePredictions.Chinese}
-  `;
-});
 </script>
+
 </body>
 </html>
