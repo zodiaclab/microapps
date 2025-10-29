@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact / Training - ZodiacLab</title>
+<style>
+:root{
+  --accent:#6C5CE7;
+  --muted:#6b7280;
+  --bg:#0f172a;
+  --card:#0b1220;
+  --glass: rgba(255,255,255,0.03);
+}
+body{
+  margin:0;
+  font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,'Helvetica Neue',Arial;
+  color:#e6eef8;
+  background:linear-gradient(180deg,#071029 0%, #061021 60%);
+}
+.container{
+  max-width:980px;
+  margin:5px auto;
+  padding:20px;
+}
+.card{
+  background:var(--card);
+  padding:30px;
+  border-radius:15px;
+  box-shadow:0 8px 30px rgba(2,6,23,0.6);
+}
+h1{color:var(--accent);text-align:center;margin-bottom:6px;}
+p.lead{color:#aaa;text-align:center;margin-bottom:25px;}
+.form-container{margin-top:20px;}
+
+iframe.jotform-iframe{
+  width:100%;
+  min-height:600px; /* fallback height */
+  border:none;
+  border-radius:12px;
+  display: block;       /* make it a block element */
+  margin: 0 auto;       /* center horizontally */
+}
+
+.contact-info{margin-top:25px;text-align:center;color:#aaa;}
+.contact-info a{color:var(--accent);text-decoration:none;}
+.contact-info a:hover{text-decoration:underline;}
+.map-container{
+  margin-top:30px;
+  border-radius:12px;
+  overflow:hidden;
+  height:300px;
+  border:1px solid rgba(255,255,255,0.05);
+}
+@media(max-width:600px){
+  .map-container{height:200px;}
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="card">
+    <h1>Contact ZodiacLab</h1>
+    <p class="lead">Fill the form below for Products/ Services, Testing, Automation or Training/ Internship/Job Assistance.</p>
+
+    <div class="form-container">
+      <!-- JotForm Embed -->
+      <iframe class="jotform-iframe" src="https://form.jotform.com/43491342893461" frameborder="0" allowfullscreen allow="geolocation; microphone; camera"></iframe>
+    </div>
+
+    <div class="contact-info">
+      <p>📧 <a href="mailto:info@zodiacservices.org">info@zodiacservices.org</a></p>
+      <p>📱 WhatsApp: <a href="https://wa.me/919840485812" target="_blank">+91 98404 85812</a></p>
+    </div>
+
+    <div class="map-container">
+      <iframe 
+        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3888.181055510026!2d80.25116011483164!3d13.082680890672896!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a5267d9df8e9f5b%3A0x95e8e3010193f4b!2sChennai%2C%20Tamil%20Nadu!5e0!3m2!1sen!2sin!4v1698500000000" 
+        width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy"></iframe>
+    </div>
+  </div>
+</div>
+
+<!-- JotForm Responsive Script -->
+<script src="https://cdn.jotfor.ms/static/feedback2.js" type="text/javascript"></script>
+<script type="text/javascript">
+  var iframe = document.querySelector('.jotform-iframe');
+  window.addEventListener('message', function(event) {
+    if (event.origin.indexOf("jotform") > -1 && event.data) {
+      try {
+        var data = JSON.parse(event.data);
+        if (data.type === "resize") {
+          iframe.style.height = data.height + "px";
+        }
+      } catch(e) {}
+    }
+  });
+</script>
+
+</body>
+</html>
