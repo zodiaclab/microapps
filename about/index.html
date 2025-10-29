@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ZodiacLab – About Us</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --accent:#6C5CE7;
+      --muted:#6b7280;
+      --bg:#0f172a;
+      --card:#0b1220;
+      --glass: rgba(255,255,255,0.03);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,'Helvetica Neue',Arial;color:#e6eef8;background:linear-gradient(180deg,#071029 0%, #061021 60%);}
+    .container{max-width:980px;margin:28px auto;padding:28px}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.04);padding:28px;border-radius:14px;box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+    header{display:flex;align-items:center;gap:18px;margin-bottom:16px}
+    .logo{width:72px;height:72px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#00b4d8);display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:20px}
+    h1{margin:0;font-size:20px;letter-spacing:-0.2px}
+    .tagline{color:var(--accent);font-weight:700;margin-top:6px}
+    .lead{color:var(--muted);margin:12px 0 18px;font-size:14px}
+
+    .grid{display:grid;grid-template-columns:2fr 1fr;gap:18px}
+    .section{background:var(--glass);padding:16px;border-radius:10px;border:1px solid rgba(255,255,255,0.02)}
+    .section h2{margin:0 0 10px;font-size:16px}
+    .section p{color:#dbeafe;line-height:1.6;font-size:14px}
+    ul{margin:6px 0 0;padding-left:18px;color:#dbeafe}
+    li{margin-bottom:8px}
+
+    .tech-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+    .chip{background:rgba(255,255,255,0.02);padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);font-size:13px}
+
+    .cta{display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:10px}
+    .cta p{margin:0;color:#dbeafe}
+    .btn{display:inline-block;padding:10px 14px;border-radius:10px;background:var(--accent);color:white;font-weight:700;text-decoration:none}
+
+    footer{margin-top:18px;padding-top:12px;border-top:1px dashed rgba(255,255,255,0.03);display:flex;justify-content:space-between;align-items:center}
+    .muted{color:var(--muted);font-size:13px}
+
+    /* Responsive */
+    @media (max-width:880px){
+      .grid{grid-template-columns:1fr}
+      header{gap:12px}
+      .logo{width:56px;height:56px;font-size:18px}
+    }
+
+    /* Print-friendly */
+    @media print{
+      body{background:white;color:black}
+      .card{box-shadow:none;border-color:#ddd;background:white}
+      .tagline{color:#222}
+      .btn{display:none}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <header>
+        <div class="logo">ZL</div>
+        <div>
+          <h1>ZodiacLab</h1>
+          <div class="tagline">Innovative Solutions for Every Need</div>
+        </div>
+      </header>
+
+      <p class="lead">
+        ZodiacLab is a versatile technology company specializing in smart and practical micro-applications that address everyday problems and business requirements. From simple utilities like invoice generators, calendars, resume builders, and weather reporting tools to complex solutions for enterprise-level operations, ZodiacLab delivers software that is functional, efficient, and user-friendly.
+      </p>
+
+      <div class="grid">
+        <main>
+          <div class="section">
+            <h2>Micro & Smart Application Development</h2>
+            <p>
+              ZodiacLab excels in designing and deploying small, smart applications that solve real-world problems. These micro-apps are suited for daily use — helping users manage tasks, organize information, and automate routine processes with minimal effort. Each app focuses on user experience, responsiveness, and accessibility for smooth performance across devices.
+            </p>
+            <ul>
+              <li>Calendars & scheduling</li>
+              <li>Invoice generation & billing</li>
+              <li>Resume builders & profile tools</li>
+              <li>Weather, dashboards & productivity widgets</li>
+            </ul>
+          </div>
+
+          <div class="section">
+            <h2>Educational & Academic Solutions</h2>
+            <p>
+              We actively support students, schools, colleges, and universities with tailored projects. ZodiacLab assists in building proof-of-concept (POC) applications, project demonstrations, and learning tools that translate theory into practical, deployable solutions — fostering innovation and hands-on technical skills.
+            </p>
+          </div>
+
+          <div class="section">
+            <h2>Business & Enterprise Solutions</h2>
+            <p>
+              Catering to businesses of all sizes, ZodiacLab designs scalable applications to streamline operations, improve efficiency, and support better decision-making. Offerings include inventory systems, automated billing platforms, CRM tools, and analytics dashboards to help organizations save time and reduce errors.
+            </p>
+          </div>
+
+          <div class="section">
+            <h2>Technology Expertise</h2>
+            <div class="tech-list">
+              <div class="chip">HTML</div>
+              <div class="chip">CSS</div>
+              <div class="chip">JavaScript</div>
+              <div class="chip">React</div>
+              <div class="chip">Java</div>
+              <div class="chip">.NET</div>
+              <div class="chip">Python</div>
+              <div class="chip">AI / ML</div>
+            </div>
+            <p>
+              We leverage modern front-end frameworks and robust back-end platforms to deliver everything from lightweight web apps to advanced AI/ML-powered systems.
+            </p>
+          </div>
+
+          <div class="section">
+            <h2>Quality Assurance & Testing</h2>
+            <p>
+              Rigorous development and testing — both manual and automated — ensure that every delivery is reliable, secure, and high-performing. We follow best practices to meet enterprise-grade quality standards before deployment.
+            </p>
+          </div>
+
+          <div class="section">
+            <h2>Conclusion</h2>
+            <p>
+              ZodiacLab is committed to delivering innovative, practical, and high-quality technology solutions tailored to individuals, educational institutions, and businesses. Through a blend of creativity, technical expertise, and robust QA, we create software that makes a measurable difference.
+            </p>
+          </div>
+        </main>
+
+        <aside>
+          <div class="section">
+            <h2>Why Choose ZodiacLab?</h2>
+            <ul>
+              <li>Practical solutions focused on real problems</li>
+              <li>End-to-end delivery: design → build → test → deploy</li>
+              <li>AI-first mindset and cross-platform expertise</li>
+              <li>Scalable, secure, client-centric implementations</li>
+            </ul>
+          </div>
+
+          <div class="section">
+            <h2>Quick Pitch</h2>
+            <p>We build focused digital tools that save time, accelerate learning, and drive growth — pairing design thinking with robust engineering to deliver products that scale.</p>
+            <div class="cta" style="margin-top:12px">
+              <a class="btn" href="#contact">Request a Consultation</a>
+              <p style="margin-top:8px;color:#dbeafe;font-size:13px">Email: hello@zodiaclab.example</p>
+              <p style="margin-top:4px;color:var(--muted);font-size:13px">Phone: +91 90000 00000</p>
+            </div>
+          </div>
+
+          <div class="section">
+            <h2>Industries Served</h2>
+            <ul>
+              <li>Education & Research</li>
+              <li>SMEs & Startups</li>
+              <li>Corporate & Enterprise</li>
+              <li>Personal productivity & public tools</li>
+            </ul>
+          </div>
+        </aside>
+      </div>
+
+      <footer>
+        <div class="muted">© 2025 ZodiacLab • Smart apps • AI-first solutions</div>
+        <div class="muted">www.zodiaclab.tech</div>
+      </footer>
+    </div>
+  </div>
+</body>
+</html>
