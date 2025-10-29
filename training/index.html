@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ZodiacLab – Training & Development</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --accent:#6C5CE7;
+      --muted:#6b7280;
+      --bg:#0f172a;
+      --card:#0b1220;
+      --glass: rgba(255,255,255,0.03);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,'Helvetica Neue',Arial;color:#e6eef8;background:linear-gradient(180deg,#071029 0%, #061021 60%);}
+    .container{max-width:980px;margin:28px auto;padding:28px}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.04);padding:28px;border-radius:14px;box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+    header{display:flex;align-items:center;gap:18px;margin-bottom:16px}
+    .logo{width:72px;height:72px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#00b4d8);display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:20px}
+    h1{margin:0;font-size:20px;letter-spacing:-0.2px}
+    .tagline{color:var(--accent);font-weight:700;margin-top:6px}
+    .lead{color:var(--muted);margin:12px 0 18px;font-size:14px}
+
+    .grid{display:grid;grid-template-columns:2fr 1fr;gap:18px}
+    .section{background:var(--glass);padding:16px;border-radius:10px;border:1px solid rgba(255,255,255,0.02)}
+    .section h2{margin:0 0 10px;font-size:16px}
+    .section p{color:#dbeafe;line-height:1.6;font-size:14px}
+    ul{margin:6px 0 0;padding-left:18px;color:#dbeafe}
+    li{margin-bottom:8px}
+
+    .tech-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+    .chip{background:rgba(255,255,255,0.02);padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);font-size:13px}
+
+    .cta{display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:10px}
+    .cta p{margin:0;color:#dbeafe}
+    .btn{display:inline-block;padding:10px 14px;border-radius:10px;background:var(--accent);color:white;font-weight:700;text-decoration:none}
+
+    footer{margin-top:18px;padding-top:12px;border-top:1px dashed rgba(255,255,255,0.03);display:flex;justify-content:space-between;align-items:center}
+    .muted{color:var(--muted);font-size:13px}
+
+    @media (max-width:880px){
+      .grid{grid-template-columns:1fr}
+      header{gap:12px}
+      .logo{width:56px;height:56px;font-size:18px}
+    }
+
+    @media print{
+      body{background:white;color:black}
+      .card{box-shadow:none;border-color:#ddd;background:white}
+      .tagline{color:#222}
+      .btn{display:none}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <header>
+        <div class="logo">ZL</div>
+        <div>
+          <h1>ZodiacLab Training Academy</h1>
+          <div class="tagline">Empowering Skills • Building Futures</div>
+        </div>
+      </header>
+
+      <p class="lead">
+        ZodiacLab Training Academy is dedicated to empowering students, professionals, and organizations through
+        cutting-edge technology training programs in AI/ML, Full Stack Development, and Software Testing. 
+        Our mission is simple — **bridge the gap between learning and real-world application** by offering
+        **hands-on training**, **project exposure**, and **career guidance**.
+      </p>
+
+      <div class="grid">
+        <main>
+          <div class="section">
+            <h2>Core Training Programs</h2>
+            <p>
+              Our programs are designed for both beginners and professionals who want to advance their technical expertise.
+              Training includes deep practical exposure with live projects, mock assessments, and mentoring by industry experts.
+            </p>
+            <ul>
+              <li><b>AI & Machine Learning:</b> Python, TensorFlow, NLP, Chatbot Design, Generative AI</li>
+              <li><b>Full Stack Development:</b> Java, .NET, React, Node.js, SQL, and API integration</li>
+              <li><b>Software Testing:</b> Manual & Automation Testing with Postman, Swagger, Karate, Playwright, Selenium</li>
+            </ul>
+          </div>
+
+          <div class="section">
+            <h2>Academic & Institutional Training</h2>
+            <p>
+              ZodiacLab partners with schools, colleges, and universities to deliver project-based academic training.
+              We assist in POC projects, final-year academic implementations, and tech workshops that turn concepts into deployable solutions.
+            </p>
+            <ul>
+              <li>Student workshops on AI/ML & Cloud</li>
+              <li>Mini & Major project assistance</li>
+              <li>Mentoring for innovation and startup ideas</li>
+            </ul>
+          </div>
+
+          <div class="section">
+            <h2>Corporate & Professional Upskilling</h2>
+            <p>
+              We offer tailored corporate training programs focused on upgrading workforce skills in automation, API testing, and
+              AI-driven software systems. These programs ensure that your team stays ahead with the latest frameworks and
+              tools used across industries.
+            </p>
+          </div>
+
+          <div class="section">
+            <h2>Technologies Covered</h2>
+            <div class="tech-list">
+              <div class="chip">AI / ML</div>
+              <div class="chip">Python</div>
+              <div class="chip">Java</div>
+              <div class="chip">.NET</div>
+              <div class="chip">React</div>
+              <div class="chip">Postman</div>
+              <div class="chip">Swagger</div>
+              <div class="chip">Karate</div>
+              <div class="chip">Playwright</div>
+              <div class="chip">Selenium</div>
+            </div>
+            <p>All courses are aligned with current industry standards and practical implementations.</p>
+          </div>
+
+          <div class="section">
+            <h2>Internship & Job Assistance</h2>
+            <p>
+              Every participant receives personalized mentoring, mock interviews, resume preparation guidance,
+              and internship support with real-world projects. ZodiacLab’s training programs are designed to help
+              participants transition confidently from learning to employment.
+            </p>
+          </div>
+
+          <div class="section">
+            <h2>Learning Methodology</h2>
+            <ul>
+              <li>Hybrid model: Classroom + Online</li>
+              <li>Project-based and problem-solving approach</li>
+              <li>Practical sessions using real APIs and frameworks</li>
+              <li>Assignments, mock interviews, and certification</li>
+            </ul>
+          </div>
+
+          <div class="section">
+            <h2>Vision</h2>
+            <p>
+              To create a new generation of skilled professionals equipped with future-ready skills,
+              combining innovation, technology, and confidence to succeed in a global digital world.
+            </p>
+          </div>
+        </main>
+
+        <aside>
+          <div class="section">
+            <h2>Who Can Join?</h2>
+            <ul>
+              <li>Students & fresh graduates</li>
+              <li>Working professionals seeking upskilling</li>
+              <li>Corporate employees for team training</li>
+              <li>Academic institutions for group programs</li>
+            </ul>
+          </div>
+
+          <div class="section">
+            <h2>Why ZodiacLab Training?</h2>
+            <ul>
+              <li>Expert trainers from top tech backgrounds</li>
+              <li>Hands-on sessions & live projects</li>
+              <li>Industry-ready curriculum</li>
+              <li>Internship & job placement support</li>
+            </ul>
+          </div>
+
+          <div class="section">
+            <h2>Enroll Now</h2>
+            <div class="cta">
+              <a href="#register" class="btn">Join Our Next Batch</a>
+              <p>Email: info@zodiacservices.org</p>
+              <p class="muted">Phone: +91 9840485812</p>
+            </div>
+          </div>
+
+          <div class="section">
+            <h2>Key Outcomes</h2>
+            <ul>
+              <li>Industry-ready portfolio projects</li>
+              <li>Certification from ZodiacLab Academy</li>
+              <li>Career mentoring & resume building</li>
+              <li>Placement and internship referrals</li>
+            </ul>
+          </div>
+        </aside>
+      </div>
+
+      <footer>
+        <div class="muted">© 2025 ZodiacLab Training Academy • Skill | Innovate | Excel</div>
+        <div class="muted">www.zodiaclab.tech/training</div>
+      </footer>
+    </div>
+  </div>
+</body>
+</html>
