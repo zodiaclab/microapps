@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>✅ ZodiacLab To-Do List</title>
+<style>
+  :root {
+    --accent: #00bcd4;
+    --accent-hover: #03a9f4;
+    --bg-gradient: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    --glass-bg: rgba(255, 255, 255, 0.1);
+    --glass-border: rgba(255, 255, 255, 0.2);
+  }
+
+  body {
+    font-family: "Segoe UI", sans-serif;
+    background: var(--bg-gradient);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  header {
+    text-align: center;
+    margin-top: 20px;
+  }
+
+  header h1 {
+    font-size: 1.8rem;
+    margin: 0;
+  }
+
+  header p {
+    color: #cdd4d9;
+    font-size: 0.95rem;
+    margin-top: 5px;
+  }
+
+  .todo-container {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(8px);
+    border-radius: 15px;
+    width: 100%;
+    max-width: 500px;
+    padding: 25px;
+    margin: 30px auto;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  }
+
+  .todo-input-area {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  input[type="text"] {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    outline: none;
+    font-size: 1rem;
+  }
+
+  button {
+    background: var(--accent);
+    border: none;
+    padding: 12px 18px;
+    border-radius: 8px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+
+  button:hover {
+    background: var(--accent-hover);
+    transform: translateY(-2px);
+  }
+
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  li {
+    background: rgba(255, 255, 255, 0.08);
+    margin-bottom: 10px;
+    padding: 12px 15px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: 0.2s;
+    word-break: break-word;
+  }
+
+  li.completed {
+    text-decoration: line-through;
+    opacity: 0.6;
+  }
+
+  .actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .actions button {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    border-radius: 6px;
+  }
+
+  footer {
+    text-align: center;
+    margin-top: auto;
+    color: #b8c3ca;
+    font-size: 0.9rem;
+    padding: 20px 10px;
+  }
+
+  footer a {
+    color: #b8c3ca;
+    text-decoration: none;
+    margin: 0 10px;
+  }
+
+  footer a:hover {
+    text-decoration: underline;
+  }
+
+  @media (max-width: 600px) {
+    header h1 {
+      font-size: 1.5rem;
+    }
+    .todo-container {
+      padding: 20px 15px;
+    }
+    input[type="text"] {
+      font-size: 0.9rem;
+    }
+    button {
+      padding: 10px 14px;
+    }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>🌟 ZodiacLab To-Do List</h1>
+    <p>Organize your day smartly — all stored securely in your browser.</p>
+  </header>
+
+  <div class="todo-container">
+    <div class="todo-input-area">
+      <input type="text" id="taskInput" placeholder="Enter a new task..." />
+      <button id="addBtn">Add</button>
+    </div>
+    <ul id="taskList"></ul>
+  </div>
+
+  <footer>
+    <a href="/about/">About Us</a> |
+    <a href="/contact/">Contact</a> |
+    <a href="/privacy/">Privacy</a>
+    <br><br>
+    © 2025 ZodiacLab · All rights reserved.
+  </footer>
+
+  <script>
+    const input = document.getElementById("taskInput");
+    const addBtn = document.getElementById("addBtn");
+    const taskList = document.getElementById("taskList");
+
+    let tasks = JSON.parse(localStorage.getItem("zodiaclab_todos") || "[]");
+
+    function saveTasks() {
+      localStorage.setItem("zodiaclab_todos", JSON.stringify(tasks));
+    }
+
+    function renderTasks() {
+      taskList.innerHTML = "";
+      tasks.forEach(task => {
+        const li = document.createElement("li");
+        if (task.completed) li.classList.add("completed");
+        li.textContent = task.text;
+
+        const actions = document.createElement("div");
+        actions.classList.add("actions");
+
+        const doneBtn = document.createElement("button");
+        doneBtn.textContent = task.completed ? "Undo" : "Done";
+        doneBtn.style.background = task.completed ? "#607d8b" : "#4caf50";
+        doneBtn.onclick = () => toggleTask(task.id);
+
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "Del";
+        delBtn.style.background = "#e91e63";
+        delBtn.onclick = () => deleteTask(task.id);
+
+        actions.append(doneBtn, delBtn);
+        li.appendChild(actions);
+        taskList.appendChild(li);
+      });
+    }
+
+    function addTask() {
+      const text = input.value.trim();
+      if (!text) return;
+      const newTask = { id: Date.now(), text, completed: false };
+      tasks.push(newTask);
+      saveTasks();
+      renderTasks();
+      input.value = "";
+    }
+
+    function toggleTask(id) {
+      tasks = tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t);
+      saveTasks();
+      renderTasks();
+    }
+
+    function deleteTask(id) {
+      tasks = tasks.filter(t => t.id !== id);
+      saveTasks();
+      renderTasks();
+    }
+
+    addBtn.addEventListener("click", addTask);
+    input.addEventListener("keypress", e => { if (e.key === "Enter") addTask(); });
+    renderTasks();
+  </script>
+</body>
+</html>
