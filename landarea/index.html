@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZodiacLab | Land Measurement Converter</title>
+<style>
+  body {
+    font-family: "Segoe UI", sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+  }
+
+  header p {
+    color: #cdd4d9;
+    font-size: 0.95rem;
+  }
+
+  .container {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    backdrop-filter: blur(6px);
+    border-radius: 15px;
+    padding: 25px;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  }
+
+  label {
+    display: block;
+    margin-top: 15px;
+    margin-bottom: 5px;
+    font-weight: 500;
+  }
+
+  input, select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    border: none;
+    font-size: 1rem;
+    background: rgba(255,255,255,0.15);
+    color: #fff;             /* text color in input/select */
+  }
+
+  input::placeholder {
+    color: #ccc;
+  }
+
+  select option {
+    color: #000;             /* dropdown item text */
+    background-color: #fff;  /* dropdown item background */
+  }
+
+  .result {
+    background: rgba(255,255,255,0.08);
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 15px;
+    text-align: center;
+    font-size: 1.1rem;
+  }
+
+  footer {
+    text-align: center;
+    margin-top: auto;
+    padding: 20px;
+    color: #b8c3ca;
+    font-size: 0.85rem;
+  }
+
+  @media(max-width:500px){
+    header h1 { font-size: 1.5rem; }
+    .container { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📏 ZodiacLab Land Converter</h1>
+  <p>Convert land area units for India & worldwide</p>
+</header>
+
+<div class="container">
+  <label for="value">Enter value:</label>
+  <input type="number" id="value" placeholder="Enter area..." />
+
+  <label for="fromUnit">From unit:</label>
+  <select id="fromUnit">
+    <option value="sqm">Square Meter (m²)</option>
+    <option value="sqft">Square Feet (ft²)</option>
+    <option value="acre">Acre</option>
+    <option value="hectare">Hectare</option>
+    <option value="sqyd">Square Yard</option>
+    <option value="bigha">Bigha (India)</option>
+    <option value="katha">Katha (India)</option>
+    <option value="guntha">Guntha (India)</option>
+    <option value="cent">Cent (India)</option>
+    <option value="marla">Marla (India)</option>
+    <option value="kanal">Kanal (India)</option>
+  </select>
+
+  <label for="toUnit">To unit:</label>
+  <select id="toUnit">
+    <option value="sqm">Square Meter (m²)</option>
+    <option value="sqft">Square Feet (ft²)</option>
+    <option value="acre">Acre</option>
+    <option value="hectare">Hectare</option>
+    <option value="sqyd">Square Yard</option>
+    <option value="bigha">Bigha (India)</option>
+    <option value="katha">Katha (India)</option>
+    <option value="guntha">Guntha (India)</option>
+    <option value="cent">Cent (India)</option>
+    <option value="marla">Marla (India)</option>
+    <option value="kanal">Kanal (India)</option>
+  </select>
+
+  <div class="result" id="result">Converted value will appear here</div>
+</div>
+
+<footer>© 2025 ZodiacLab · All rights reserved.</footer>
+
+<script>
+const valueInput = document.getElementById('value');
+const fromUnit = document.getElementById('fromUnit');
+const toUnit = document.getElementById('toUnit');
+const resultDiv = document.getElementById('result');
+
+// Conversion rates relative to 1 square meter
+const conversionRates = {
+  sqm: 1,
+  sqft: 10.7639,
+  acre: 0.000247105,
+  hectare: 0.0001,
+  sqyd: 1.19599,
+  bigha: 0.00158,       // Approximate
+  katha: 0.0395,        // Approximate
+  guntha: 0.02471,      // Approximate
+  cent: 0.024471,
+  marla: 0.0252929,     // Punjab/Haryana standard
+  kanal: 0.0505858
+};
+
+function convertLand() {
+  const value = parseFloat(valueInput.value);
+  if (isNaN(value)) {
+    resultDiv.textContent = 'Please enter a valid number';
+    return;
+  }
+  const inSqm = value / conversionRates[fromUnit.value]; // convert to sqm
+  const converted = inSqm * conversionRates[toUnit.value];
+  resultDiv.textContent = `${value} ${fromUnit.options[fromUnit.selectedIndex].text} = ${converted.toFixed(4)} ${toUnit.options[toUnit.selectedIndex].text}`;
+}
+
+// Event listeners
+valueInput.addEventListener('input', convertLand);
+fromUnit.addEventListener('change', convertLand);
+toUnit.addEventListener('change', convertLand);
+</script>
+
+</body>
+</html>
