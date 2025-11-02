@@ -1,181 +1,166 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>ZodiacLab | Land Measurement Converter</title>
 <style>
+  :root {
+    --bg: linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+    --glass: rgba(255,255,255,0.10);
+    --glass-border: rgba(255,255,255,0.18);
+  }
   body {
     font-family: "Segoe UI", sans-serif;
-    margin: 0;
-    padding: 20px;
-    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-    color: white;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    margin: 0; padding: 20px;
+    background: var(--bg); color: #fff;
+    display: flex; flex-direction: column; align-items: center;
     min-height: 100vh;
   }
-
-  header {
-    text-align: center;
-    margin-bottom: 20px;
-  }
-
-  header h1 {
-    margin: 0;
-    font-size: 1.8rem;
-  }
-
-  header p {
-    color: #cdd4d9;
-    font-size: 0.95rem;
-  }
+  header { text-align:center; margin-bottom:16px; }
+  header h1 { margin:0; font-size:1.6rem; }
+  header p { margin:6px 0 0; color:#cdd4d9; font-size:0.95rem; }
 
   .container {
-    background: rgba(255,255,255,0.1);
-    border: 1px solid rgba(255,255,255,0.2);
+    width: 100%; max-width: 480px;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px; padding: 22px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35);
     backdrop-filter: blur(6px);
-    border-radius: 15px;
-    padding: 25px;
-    max-width: 400px;
-    width: 90%;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
   }
 
-  label {
-    display: block;
-    margin-top: 15px;
-    margin-bottom: 5px;
-    font-weight: 500;
-  }
-
+  label { display:block; margin-top:12px; margin-bottom:6px; font-weight:600; }
   input, select {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 10px;
-    border-radius: 8px;
-    border: none;
-    font-size: 1rem;
-    background: rgba(255,255,255,0.15);
-    color: #fff;             /* text color in input/select */
+    width:100%; padding:10px 12px; border-radius:8px; border:none;
+    background: rgba(255,255,255,0.12); color:#fff; font-size:1rem;
   }
-
-  input::placeholder {
-    color: #ccc;
-  }
-
-  select option {
-    color: #000;             /* dropdown item text */
-    background-color: #fff;  /* dropdown item background */
-  }
-
+  select option { color:#000; background:#fff; }
   .result {
-    background: rgba(255,255,255,0.08);
-    padding: 15px;
-    border-radius: 8px;
-    margin-top: 15px;
-    text-align: center;
-    font-size: 1.1rem;
+    margin-top:14px; padding:12px; border-radius:8px;
+    background: rgba(255,255,255,0.06); text-align:center;
+    font-size:1.05rem;
   }
+  .note { margin-top:10px; color:#d7dfe6; font-size:0.88rem; }
+  footer { margin-top:20px; color:#b8c3ca; font-size:0.88rem; text-align:center; }
 
-  footer {
-    text-align: center;
-    margin-top: auto;
-    padding: 20px;
-    color: #b8c3ca;
-    font-size: 0.85rem;
-  }
-
-  @media(max-width:500px){
-    header h1 { font-size: 1.5rem; }
-    .container { padding: 20px; }
+  @media (max-width:420px) {
+    .container { padding:16px; }
+    header h1 { font-size:1.2rem; }
   }
 </style>
 </head>
 <body>
+  <header>
+    <h1>📏 ZodiacLab LandArea Converter</h1>
+    <p>Convert between common global & India land units (uses m² as base).</p>
+  </header>
 
-<header>
-  <h1>📏 ZodiacLab Land Converter</h1>
-  <p>Convert land area units for India & worldwide</p>
-</header>
+  <div class="container">
+    <label for="value">Enter value</label>
+    <input id="value" type="number" placeholder="e.g. 1.5" step="any" />
 
-<div class="container">
-  <label for="value">Enter value:</label>
-  <input type="number" id="value" placeholder="Enter area..." />
+    <label for="from">From unit</label>
+    <select id="from">
+      <option value="sqft">Square foot (ft²)</option>
+      <option value="sqm">Square meter (m²)</option>
+      <option value="sqyd">Square yard (yd²)</option>
+      <option value="acre">Acre</option>
+      <option value="hectare">Hectare</option>
+      <option value="cent">Cent (India)</option>
+      <option value="marla">Marla (Punjab standard)</option>
+      <option value="kanal">Kanal (Punjab standard)</option>
+      <option value="guntha">Guntha (common) </option>
+      <option value="bigha">Bigha (varies by state)</option>
+      <option value="katha">Katha (varies by state)</option>
+    </select>
 
-  <label for="fromUnit">From unit:</label>
-  <select id="fromUnit">
-    <option value="sqm">Square Meter (m²)</option>
-    <option value="sqft">Square Feet (ft²)</option>
-    <option value="acre">Acre</option>
-    <option value="hectare">Hectare</option>
-    <option value="sqyd">Square Yard</option>
-    <option value="bigha">Bigha (India)</option>
-    <option value="katha">Katha (India)</option>
-    <option value="guntha">Guntha (India)</option>
-    <option value="cent">Cent (India)</option>
-    <option value="marla">Marla (India)</option>
-    <option value="kanal">Kanal (India)</option>
-  </select>
+    <label for="to">To unit</label>
+    <select id="to">
+      <option value="sqft">Square foot (ft²)</option>
+      <option value="sqm">Square meter (m²)</option>
+      <option value="sqyd">Square yard (yd²)</option>
+      <option value="acre">Acre</option>
+      <option value="hectare">Hectare</option>
+      <option value="cent">Cent (India)</option>
+      <option value="marla">Marla (Punjab standard)</option>
+      <option value="kanal">Kanal (Punjab standard)</option>
+      <option value="guntha">Guntha (common)</option>
+      <option value="bigha">Bigha (varies by state)</option>
+      <option value="katha">Katha (varies by state)</option>
+    </select>
 
-  <label for="toUnit">To unit:</label>
-  <select id="toUnit">
-    <option value="sqm">Square Meter (m²)</option>
-    <option value="sqft">Square Feet (ft²)</option>
-    <option value="acre">Acre</option>
-    <option value="hectare">Hectare</option>
-    <option value="sqyd">Square Yard</option>
-    <option value="bigha">Bigha (India)</option>
-    <option value="katha">Katha (India)</option>
-    <option value="guntha">Guntha (India)</option>
-    <option value="cent">Cent (India)</option>
-    <option value="marla">Marla (India)</option>
-    <option value="kanal">Kanal (India)</option>
-  </select>
+    <div class="result" id="result">Converted value will appear here</div>
 
-  <div class="result" id="result">Converted value will appear here</div>
-</div>
+    <div class="note" id="note">
+      <strong>Note:</strong> India-specific units (bigha, katha, guntha, marla, kanal) vary by state. Values shown use commonly accepted standards (see list below). Tell me if you want state-specific definitions.
+      <br><br>
+      <em>Key references used:</em> 1 sq ft = 0.09290304 m²; 1 acre = 4046.8564224 m²; 1 cent = 40.468564224 m² (≈435.6 ft²).
+    </div>
+  </div>
 
-<footer>© 2025 ZodiacLab · All rights reserved.</footer>
+  <footer>© 2025 ZodiacLab · All rights reserved.</footer>
 
 <script>
-const valueInput = document.getElementById('value');
-const fromUnit = document.getElementById('fromUnit');
-const toUnit = document.getElementById('toUnit');
-const resultDiv = document.getElementById('result');
+  // sqmPerUnit = how many square meters equals ONE of that unit (use precise/common values)
+  const sqmPerUnit = {
+    // global / exact definitions
+    sqm: 1,                            // square meter
+    sqft: 0.09290304,                  // square foot (exact)
+    sqyd: 0.83612736,                  // square yard (exact)
+    acre: 4046.8564224,                // acre = 43560 sqft
+    hectare: 10000,                    // hectare = 10000 sqm
 
-// Conversion rates relative to 1 square meter
-const conversionRates = {
-  sqm: 1,
-  sqft: 10.7639,
-  acre: 0.000247105,
-  hectare: 0.0001,
-  sqyd: 1.19599,
-  bigha: 0.00158,       // Approximate
-  katha: 0.0395,        // Approximate
-  guntha: 0.02471,      // Approximate
-  cent: 0.024471,
-  marla: 0.0252929,     // Punjab/Haryana standard
-  kanal: 0.0505858
-};
+    // India-specific / commonly used standards
+    // cent: commonly used in South India & other regions: 1 cent = 40.468564224 m² (≈435.6 ft²)
+    cent: 40.468564224,
 
-function convertLand() {
-  const value = parseFloat(valueInput.value);
-  if (isNaN(value)) {
-    resultDiv.textContent = 'Please enter a valid number';
-    return;
+    // Marla / Kanal: using Punjab/Haryana standard:
+    // 1 marla = 25.29285264 m²  (often given as 272.25 ft²)
+    // 1 kanal = 20 marla = 505.8570528 m²
+    marla: 25.29285264,
+    kanal: 25.29285264 * 20,
+
+    // Guntha: common value often used (varies by region). A frequently used conversion:
+    // 1 guntha = 101.1714 m²  (this is a commonly cited figure; check your state if needed)
+    guntha: 101.1714,
+
+    // Bigha & Katha: these vary heavily by state — we provide a commonly cited approximate:
+    // (Examples: 1 katha (Bihar) ≈ 126.44 m²; 1 bigha may be 20 katha or other values depending on state)
+    // We'll use commonly-cited approximations here, but please ask for a specific state if you need exact.
+    katha: 126.44,      // approximate - varies (Bihar / some states)
+    bigha: 1608.0      // approximate (one commonly used standard ~ 1608 m²) — *varies widely*
+  };
+
+  const valueInput = document.getElementById('value');
+  const fromSelect = document.getElementById('from');
+  const toSelect = document.getElementById('to');
+  const resultDiv = document.getElementById('result');
+
+  function convert() {
+    const v = parseFloat(valueInput.value);
+    if (isNaN(v)) {
+      resultDiv.textContent = 'Please enter a valid number';
+      return;
+    }
+    const from = fromSelect.value;
+    const to = toSelect.value;
+    // convert: value_in_sqm = v * sqmPerUnit[from]
+    // result = value_in_sqm / sqmPerUnit[to]
+    const sqmValue = v * (sqmPerUnit[from] || 1);
+    const converted = sqmValue / (sqmPerUnit[to] || 1);
+
+    // formatting: show up to 6 decimals, but trim trailing zeros
+    const formatted = Number.parseFloat(converted.toFixed(6)).toString();
+    resultDiv.innerHTML = `${v} <strong>${fromSelect.options[fromSelect.selectedIndex].text}</strong> = <strong>${formatted}</strong> ${toSelect.options[toSelect.selectedIndex].text}`;
   }
-  const inSqm = value / conversionRates[fromUnit.value]; // convert to sqm
-  const converted = inSqm * conversionRates[toUnit.value];
-  resultDiv.textContent = `${value} ${fromUnit.options[fromUnit.selectedIndex].text} = ${converted.toFixed(4)} ${toUnit.options[toUnit.selectedIndex].text}`;
-}
 
-// Event listeners
-valueInput.addEventListener('input', convertLand);
-fromUnit.addEventListener('change', convertLand);
-toUnit.addEventListener('change', convertLand);
+  valueInput.addEventListener('input', convert);
+  fromSelect.addEventListener('change', convert);
+  toSelect.addEventListener('change', convert);
+
+  // initial convert (if there's default value)
+  convert();
 </script>
-
 </body>
 </html>
