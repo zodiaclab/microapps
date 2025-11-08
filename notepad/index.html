@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Notepad</title>
+<style>
+  body {
+    font-family: "Segoe UI", sans-serif;
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    color: #fff;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    align-items: center;
+    justify-content: center;
+  }
+
+  header {
+  
+  background: rgba(255, 255, 255, 0.1);
+  padding: 12px 20px;
+  text-align: center;
+  font-size: 1.4em;
+  font-weight: bold;
+  border-radius: 12px 12px 0 0;
+  width: 95%;            /* ✅ match container width */
+  max-width: 800px;      /* ✅ same as container */
+  box-sizing: border-box;
+  margin-top: 20px;
+  overflow-x: hidden;    /* ✅ avoid scrollbar on mobile */
+
+
+  }
+
+  .container {
+  display: flex;
+  flex-direction: column;
+  width: 95%;
+  max-width: 800px;
+  height: auto;
+  min-height: 70vh;
+  background: rgba(255,255,255,0.05);
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  margin: 0 auto;
+  overflow: hidden; /* prevents child overflow */
+  }
+
+  textarea {
+    flex: 1;
+  width: 100%;
+  max-width: 100%; /* ✅ ensures it never exceeds container width */
+  border: none;
+  outline: none;
+  padding: 16px;
+  font-size: 1.1em;
+  line-height: 1.5em;
+  color: #fff;
+  background: transparent;
+  box-sizing: border-box;
+  border-radius: 0 0 12px 12px;
+  resize: vertical; /* vertical resizing only */
+  overflow-wrap: break-word;
+  word-break: break-word;
+  overflow-x: hidden; /* ✅ hides any horizontal overflow */
+  }
+
+  footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    background: rgba(255,255,255,0.08);
+    padding: 10px;
+    border-radius: 0 0 12px 12px;
+  }
+
+  button, label {
+    background: #3b82f6;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 16px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+
+  button:hover, label:hover {
+    background: #2563eb;
+  }
+
+  input[type="file"] {
+    display: none;
+  }
+
+  @media (max-width: 600px) {
+    textarea { font-size: 1em; }
+    button { flex: 1 1 45%; }
+  }
+</style>
+</head>
+<body>
+
+<header>📝 ZodiacLab - Smart Notepad</header>
+
+<div class="container">
+  <textarea id="noteArea" placeholder="Start typing your notes..."></textarea>
+  <footer>
+    <button onclick="clearNote()">🧹 Clear</button>
+    <label for="fileInput">📂 Import</label>
+    <input type="file" id="fileInput" accept=".txt,.docx,.pdf" onchange="importFile(event)">
+    <button onclick="exportNote()">⬇️ Export (HTML)</button>
+    <button onclick="exportAsText()">💾 Save as TXT</button>
+    <button onclick="printNote()">🖨️ Print</button>
+  </footer>
+</div>
+
+<script>
+// Auto-load saved notes on open
+window.onload = () => {
+  const saved = localStorage.getItem("smartNotepad");
+  if (saved) document.getElementById("noteArea").value = saved;
+};
+
+// Auto-save after short delay
+let saveTimeout;
+document.getElementById("noteArea").addEventListener("input", () => {
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(saveNote, 500);
+});
+
+function saveNote() {
+  const text = document.getElementById("noteArea").value;
+  localStorage.setItem("smartNotepad", text);
+}
+
+// ✅ Clear button with confirmation
+function clearNote() {
+  if (confirm("Are you sure you want to clear all notes? This cannot be undone.")) {
+    document.getElementById("noteArea").value = "";
+    localStorage.removeItem("smartNotepad");
+  }
+}
+
+function exportNote() {
+  const text = document.getElementById("noteArea").value;
+  const blob = new Blob([text], { type: "text/html" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "MyNotes.html";
+  link.click();
+}
+
+function printNote() {
+  const text = document.getElementById("noteArea").value.replace(/\n/g, "<br>");
+  const printWindow = window.open("", "_blank");
+  printWindow.document.write(`<pre style="font-family:Segoe UI;white-space:pre-wrap;">${text}</pre>`);
+  printWindow.document.close();
+  printWindow.print();
+}
+
+// 📂 Import text from file and append
+function importFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const text = e.target.result;
+    const textarea = document.getElementById("noteArea");
+    textarea.value += `\n\n--- Imported on ${new Date().toLocaleString()} ---\n${text}`;
+    saveNote();
+  };
+
+  reader.readAsText(file);
+}
+
+// 💾 Export / Save as Plain Text
+function exportAsText() {
+  const text = document.getElementById("noteArea").value;
+  if (!text.trim()) {
+    alert("No content to save!");
+    return;
+  }
+  const blob = new Blob([text], { type: "text/plain" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "MyNotes.txt";
+  link.click();
+}
+
+</script>
+
+</body>
+</html>
