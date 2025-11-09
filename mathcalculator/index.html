@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>ZodiacLab — Smart Formula Calculator</title>
+<style>
+  :root{
+    --bg1:#0f172a; --bg2:#1e293b; --card:#071028;
+    --accent:#4CAF50; --muted:#9aa6b2; --light:#f8fafc;
+  }
+  html,body{height:100%;margin:0;font-family:Inter, "Segoe UI", Roboto, Arial; background:linear-gradient(135deg,var(--bg1),var(--bg2)); color:var(--light);}
+  .wrap{max-width:1100px;margin:22px auto;padding:18px;box-sizing:border-box;}
+  header{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+  header h1{font-size:1.3rem;margin:0}
+  .card{background:rgba(255,255,255,0.03);border-radius:12px;padding:16px;box-shadow:0 6px 28px rgba(2,6,23,0.7);}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+  .controls select, .controls button { padding:10px;border-radius:8px;border:none;font-size:1rem;box-sizing:border-box }
+  select { min-width:240px; background:#fff; color:#222; }
+  .btn { background:var(--accent); color:#022; padding:10px 14px; font-weight:700; border-radius:8px; cursor:pointer; }
+  .btn.ghost{background:transparent;color:var(--light);border:1px solid rgba(255,255,255,0.06)}
+  .grid{display:grid;grid-template-columns:1fr 360px;gap:16px;margin-top:12px}
+  @media (max-width:980px){ .grid{grid-template-columns:1fr} select{min-width:unset;width:100%} }
+  .inputs{background:rgba(255,255,255,0.02);padding:14px;border-radius:10px}
+  .field{display:flex;gap:8px;align-items:center;margin:8px 0}
+  .field label{min-width:140px;color:var(--muted);font-size:0.95rem}
+  .field input[type="number"], .field input[type="text"]{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06)}
+  .formula{margin-top:10px;color:var(--muted);font-style:italic}
+  .result{margin-top:12px;padding:12px;border-radius:8px;background:rgba(255,255,255,0.03);font-weight:700}
+  .help{color:var(--muted);font-size:0.92rem;margin-top:8px}
+  .cat-list{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .chip{padding:6px 10px;border-radius:999px;background:rgba(255,255,255,0.02);cursor:pointer;border:1px solid transparent;color:var(--light)}
+  .chip.active{background:var(--accent);color:#022; font-weight:700}
+  .sidebar { background: rgba(255,255,255,0.02); padding:12px; border-radius:10px; }
+  small.note{display:block;color:var(--muted);margin-top:8px}
+  footer{margin-top:18px;text-align:center;color:var(--muted);font-size:0.9rem}
+  .result .val { color: var(--accent); font-size:1.15rem; margin-left:6px; }
+  .formulaUnit { color:var(--muted); font-size:0.95rem; margin-top:6px; }
+  input[type="number"] { width:160px; }
+  .row { display:flex; flex-wrap:wrap; gap:10px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div style="font-size:1.9rem">🧮</div>
+      <div>
+        <h1>ZodiacLab — Smart Formula Calculator</h1>
+        <div style="color:var(--muted);font-size:0.95rem">Categories, dynamic inputs, formula preview and result (3 decimal places)</div>
+      </div>
+    </header>
+
+    <div class="card">
+      <div class="cat-list" id="catList"></div>
+
+      <div class="controls">
+        <select id="categorySelect"><option value="">-- Category --</option></select>
+        <select id="formulaSelect"><option value="">-- Formula --</option></select>
+        <button class="btn" id="inputBtn">Input</button>
+        <button class="btn ghost" id="clearBtn">Reset</button>
+      </div>
+
+      <div class="grid">
+        <div>
+          <div id="inputArea" class="inputs">
+            <div id="inputsPlaceholder">Select category → formula → click <b>Input</b></div>
+          </div>
+
+          <div id="formulaText" class="formula"></div>
+          <div id="unitText" class="formulaUnit"></div>
+          <div id="resultBox" class="result" style="display:none"></div>
+          <div id="helpText" class="help"></div>
+        </div>
+
+        <aside class="sidebar">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="font-weight:700">Preview & Notes</div>
+            <div style="color:var(--muted);font-size:0.9rem" id="lastCalc">No calc yet</div>
+          </div>
+
+          <div style="margin-top:12px">
+            <div style="font-weight:700;margin-bottom:10px">Formula preview</div>
+            <div id="preview" style="color:var(--muted);line-height:1.4"></div>
+          </div>
+
+          <div style="margin-top:14px">
+            <div style="font-weight:700;margin-bottom:8px">Tips</div>
+            <small class="note">Ensure units are consistent. Results show 3 decimal places where applicable.</small>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <footer>Extend by adding more formulas to the `FORMULAS` array in script.</footer>
+  </div>
+
+<script>
+/* ---------- Data-driven formulas (approx 50) ---------- */
+/* Each entry: {cat, name, inputs:[{k,label}], formula, unit(optional), calc: function(vals){}, help(optional)} */
+const FORMULAS = [
+  /* Geometry 2D */
+  {cat:'Geometry', name:'Area - Triangle (base,height)', inputs:[{k:'b',label:'Base b'},{k:'h',label:'Height h'}],
+    formula:'(1/2) × b × h', unit:'length² (e.g., m²)', calc:v=>0.5*v.b*v.h},
+  {cat:'Geometry', name:'Area - Right Triangle (legs a,b)', inputs:[{k:'a',label:'Leg a'},{k:'b',label:'Leg b'}],
+    formula:'(1/2) × a × b', unit:'length²', calc:v=>0.5*v.a*v.b},
+  {cat:'Geometry', name:'Area - Equilateral Triangle (side a)', inputs:[{k:'a',label:'Side a'}],
+    formula:'(√3/4) × a²', unit:'length²', calc:v=>(Math.sqrt(3)/4)*v.a*v.a},
+  {cat:'Geometry', name:'Area - Heron (sides a,b,c)', inputs:[{k:'a',label:'Side a'},{k:'b',label:'Side b'},{k:'c',label:'Side c'}],
+    formula:'s=(a+b+c)/2; area=√(s(s-a)(s-b)(s-c))', unit:'length²', calc:v=>{
+      const s=(v.a+v.b+v.c)/2; const t=s*(s-v.a)*(s-v.b)*(s-v.c); return t<=0? NaN:Math.sqrt(t);
+    }},
+  {cat:'Geometry', name:'Area - Rectangle (l,w)', inputs:[{k:'l',label:'Length l'},{k:'w',label:'Width w'}],
+    formula:'l × w', unit:'length²', calc:v=>v.l*v.w},
+  {cat:'Geometry', name:'Area - Square (a)', inputs:[{k:'a',label:'Side a'}],
+    formula:'a²', unit:'length²', calc:v=>v.a*v.a},
+  {cat:'Geometry', name:'Area - Parallelogram (base,height)', inputs:[{k:'b',label:'Base b'},{k:'h',label:'Height h'}],
+    formula:'b × h', unit:'length²', calc:v=>v.b*v.h},
+  {cat:'Geometry', name:'Area - Trapezoid (a,b,h)', inputs:[{k:'a',label:'Base a'},{k:'b',label:'Base b'},{k:'h',label:'Height h'}],
+    formula:'((a+b)/2) × h', unit:'length²', calc:v=>0.5*(v.a+v.b)*v.h},
+  {cat:'Geometry', name:'Area - Circle (r)', inputs:[{k:'r',label:'Radius r'}],
+    formula:'π × r²', unit:'length²', calc:v=>Math.PI*v.r*v.r},
+  {cat:'Geometry', name:'Circumference - Circle (r)', inputs:[{k:'r',label:'Radius r'}],
+    formula:'2 × π × r', unit:'length', calc:v=>2*Math.PI*v.r},
+  {cat:'Geometry', name:'Area - Ellipse (a,b)', inputs:[{k:'a',label:'Semi-major a'},{k:'b',label:'Semi-minor b'}],
+    formula:'π × a × b', unit:'length²', calc:v=>Math.PI*v.a*v.b},
+  {cat:'Geometry', name:'Sector Area (r,θ deg)', inputs:[{k:'r',label:'Radius r'},{k:'theta',label:'Angle θ (deg)'}],
+    formula:'(θ/360) × π × r²', unit:'length²', calc:v=>(v.theta/360)*Math.PI*v.r*v.r},
+  {cat:'Geometry', name:'Perimeter - Rectangle (l,w)', inputs:[{k:'l',label:'Length l'},{k:'w',label:'Width w'}],
+    formula:'2 × (l + w)', unit:'length', calc:v=>2*(v.l+v.w)},
+  {cat:'Geometry', name:'Perimeter - Square (a)', inputs:[{k:'a',label:'Side a'}],
+    formula:'4 × a', unit:'length', calc:v=>4*v.a},
+  {cat:'Geometry', name:'Regular Polygon Area (n,a)', inputs:[{k:'n',label:'# sides n'},{k:'a',label:'Side a'}],
+    formula:'(n a²)/(4 tan(π/n))', unit:'length²', calc:v=> (v.n*v.a*v.a)/(4*Math.tan(Math.PI/v.n)) },
+
+  /* 3D Volumes & Surface */
+  {cat:'3D', name:'Volume - Sphere (r)', inputs:[{k:'r',label:'Radius r'}],
+    formula:'(4/3) × π × r³', unit:'length³', calc:v=> (4/3)*Math.PI*Math.pow(v.r,3)},
+  {cat:'3D', name:'Surface Area - Sphere (r)', inputs:[{k:'r',label:'Radius r'}],
+    formula:'4 × π × r²', unit:'length²', calc:v=>4*Math.PI*v.r*v.r},
+  {cat:'3D', name:'Volume - Cylinder (r,h)', inputs:[{k:'r',label:'Radius r'},{k:'h',label:'Height h'}],
+    formula:'π × r² × h', unit:'length³', calc:v=>Math.PI*v.r*v.r*v.h},
+  {cat:'3D', name:'Surface Area - Cylinder (total)', inputs:[{k:'r',label:'Radius r'},{k:'h',label:'Height h'}],
+    formula:'2πr(h + r)', unit:'length²', calc:v=>2*Math.PI*v.r*(v.h+v.r)},
+  {cat:'3D', name:'Volume - Cone (r,h)', inputs:[{k:'r',label:'Radius r'},{k:'h',label:'Height h'}],
+    formula:'(1/3) π r² h', unit:'length³', calc:v=> (1/3)*Math.PI*v.r*v.r*v.h},
+  {cat:'3D', name:'Volume - Hemisphere (r)', inputs:[{k:'r',label:'Radius r'}],
+    formula:'(2/3) π r³', unit:'length³', calc:v=> (2/3)*Math.PI*Math.pow(v.r,3)},
+  {cat:'3D', name:'Volume - Rectangular Prism (l,w,h)', inputs:[{k:'l',label:'Length l'},{k:'w',label:'Width w'},{k:'h',label:'Height h'}],
+    formula:'l × w × h', unit:'length³', calc:v=>v.l*v.w*v.h},
+  {cat:'3D', name:'Surface Area - Cube (a)', inputs:[{k:'a',label:'Side a'}],
+    formula:'6 × a²', unit:'length²', calc:v=>6*v.a*v.a},
+  {cat:'3D', name:'Volume - Cube (a)', inputs:[{k:'a',label:'Side a'}],
+    formula:'a³', unit:'length³', calc:v=>Math.pow(v.a,3)},
+  {cat:'3D', name:'Volume - Pyramid (Base area B, h)', inputs:[{k:'B',label:'Base area B'},{k:'h',label:'Height h'}],
+    formula:'(1/3) × B × h', unit:'length³', calc:v=> (1/3)*v.B*v.h},
+
+  /* Algebra & Series */
+  {cat:'Algebra', name:'Quadratic Roots (a,b,c)', inputs:[{k:'a',label:'a'},{k:'b',label:'b'},{k:'c',label:'c'}],
+    formula:'[-b ± √(b²-4ac)]/(2a)', calc:v=>{
+      const D=v.b*v.b - 4*v.a*v.c;
+      if (D<0) return {error:'Complex roots', D: Number(D.toFixed(6))};
+      const r1 = (-v.b+Math.sqrt(D))/(2*v.a); const r2 = (-v.b-Math.sqrt(D))/(2*v.a);
+      return {r1,r2,D:Number(D.toFixed(6))};
+    }, help:'If discriminant < 0, roots are complex.'},
+  {cat:'Algebra', name:'Sum of first n natural numbers (n)', inputs:[{k:'n',label:'n'}],
+    formula:'n(n+1)/2', calc:v=> (v.n*(v.n+1))/2},
+  {cat:'Algebra', name:'Sum of squares 1²+..+n²', inputs:[{k:'n',label:'n'}],
+    formula:'n(n+1)(2n+1)/6', calc:v=> (v.n*(v.n+1)*(2*v.n+1))/6},
+  {cat:'Algebra', name:'Sum of cubes 1³+..+n³', inputs:[{k:'n',label:'n'}],
+    formula:'[n(n+1)/2]²', calc:v=> Math.pow((v.n*(v.n+1)/2),2)},
+  {cat:'Algebra', name:'Arithmetic Mean (comma values)', inputs:[{k:'vals',label:'Comma-separated numbers'}],
+    formula:'mean = sum / n', calc:v=>{
+      const arr=(''+v.vals).split(',').map(s=>parseFloat(s.trim())).filter(n=>!isNaN(n)); if (!arr.length) return NaN;
+      return arr.reduce((a,b)=>a+b,0)/arr.length;
+    }, help:'Enter comma-separated values, e.g. 2, 3.5, 10' },
+  {cat:'Algebra', name:'Geometric Series (finite) S_n', inputs:[{k:'a',label:'First term a'},{k:'r',label:'Ratio r'},{k:'n',label:'n'}],
+    formula:'S_n = a(1-r^n)/(1-r)', calc:v=> v.r===1? v.a*v.n : v.a*(1-Math.pow(v.r,v.n))/(1-v.r) },
+  {cat:'Algebra', name:'Geometric Series (infinite)', inputs:[{k:'a',label:'First term a'},{k:'r',label:'Ratio r'}],
+    formula:'S = a/(1-r) for |r|<1', calc:v=> Math.abs(v.r)<1? v.a/(1-v.r):NaN},
+
+  /* Trigonometry */
+  {cat:'Trig', name:'Pythagoras (hypotenuse c)', inputs:[{k:'a',label:'Side a'},{k:'b',label:'Side b'}],
+    formula:'c = √(a² + b²)', calc:v=>Math.sqrt(v.a*v.a + v.b*v.b)},
+  {cat:'Trig', name:'Sine Rule (find side b)', inputs:[{k:'a',label:'Side a'},{k:'A',label:'Angle A (deg)'},{k:'B',label:'Angle B (deg)'}],
+    formula:'a/sinA = b/sinB', calc:v=> (v.a / Math.sin(v.A*Math.PI/180)) * Math.sin(v.B*Math.PI/180)},
+  {cat:'Trig', name:'Cosine Rule (find side c)', inputs:[{k:'a',label:'Side a'},{k:'b',label:'Side b'},{k:'C',label:'Angle C (deg)'}],
+    formula:'c² = a² + b² - 2ab cos C', calc:v => Math.sqrt(v.a*v.a + v.b*v.b - 2*v.a*v.b*Math.cos(v.C*Math.PI/180))},
+  {cat:'Trig', name:'Area - triangle (1/2 ab sin C)', inputs:[{k:'a',label:'Side a'},{k:'b',label:'Side b'},{k:'C',label:'Included angle C (deg)'}],
+    formula:'(1/2)ab sin C', calc:v => 0.5*v.a*v.b*Math.sin(v.C*Math.PI/180) },
+  {cat:'Trig', name:'Degrees → Radians', inputs:[{k:'deg',label:'Degrees'}], formula:'rad = deg × π/180', calc:v=> v.deg*Math.PI/180},
+  {cat:'Trig', name:'Radians → Degrees', inputs:[{k:'rad',label:'Radians'}], formula:'deg = rad × 180/π', calc:v=> v.rad*180/Math.PI},
+
+  /* Physics */
+  {cat:'Physics', name:'Speed (v = d / t)', inputs:[{k:'d',label:'Distance d'},{k:'t',label:'Time t'}],
+    formula:'v = d / t', unit:'distance/time (e.g., m/s)', calc:v=> v.d / v.t},
+  {cat:'Physics', name:'Acceleration (a = (v - u)/t)', inputs:[{k:'u',label:'Initial u'},{k:'v',label:'Final v'},{k:'t',label:'Time t'}],
+    formula:'a = (v - u) / t', unit:'m/s²', calc:v=> (v.v - v.u) / v.t},
+  {cat:'Physics', name:'Force (F = m × a)', inputs:[{k:'m',label:'Mass m (kg)'},{k:'a',label:'Acceleration a (m/s²)'}],
+    formula:'F = m × a', unit:'N (kg·m/s²)', calc:v=> v.m * v.a},
+  {cat:'Physics', name:'Kinetic Energy (½mv²)', inputs:[{k:'m',label:'Mass m (kg)'},{k:'v',label:'Velocity v (m/s)'}],
+    formula:'KE = 1/2 m v²', unit:'J (kg·m²/s²)', calc:v=> 0.5 * v.m * v.v * v.v},
+  {cat:'Physics', name:'Potential Energy (mgh)', inputs:[{k:'m',label:'Mass m (kg)'},{k:'g',label:'g (9.8 m/s²)'},{k:'h',label:'Height h (m)'}],
+    formula:'PE = m × g × h', unit:'J', calc:v=> v.m * v.g * v.h},
+  {cat:'Physics', name:'Work (W = F × d)', inputs:[{k:'F',label:'Force F (N)'},{k:'d',label:'Distance d (m)'}],
+    formula:'W = F × d', unit:'J', calc:v=> v.F * v.d},
+  {cat:'Physics', name:'Power (P = W / t)', inputs:[{k:'W',label:'Work W (J)'},{k:'t',label:'Time t (s)'}],
+    formula:'P = W / t', unit:'W', calc:v=> v.W / v.t},
+  {cat:'Physics', name:'Pressure (P = F / A)', inputs:[{k:'F',label:'Force F (N)'},{k:'A',label:'Area A (m²)'}],
+    formula:'P = F / A', unit:'Pa (N/m²)', calc:v=> v.F / v.A},
+  {cat:'Physics', name:'Density (ρ = m / V)', inputs:[{k:'m',label:'Mass m (kg)'},{k:'V',label:'Volume V (m³)'}],
+    formula:'ρ = m / V', unit:'kg/m³', calc:v=> v.m / v.V},
+  {cat:'Physics', name:'Ohm\'s Law (V = I × R)', inputs:[{k:'I',label:'Current I (A)'},{k:'R',label:'Resistance R (Ω)'}],
+    formula:'V = I × R', unit:'V', calc:v=> v.I * v.R},
+  {cat:'Physics', name:'Electrical Power (P = V × I)', inputs:[{k:'V',label:'Voltage V (V)'},{k:'I',label:'Current I (A)'}],
+    formula:'P = V × I', unit:'W', calc:v=> v.V * v.I},
+
+  /* Statistics */
+  {cat:'Statistics', name:'Mean (comma values)', inputs:[{k:'vals',label:'Comma-separated numbers'}],
+    formula:'mean = sum(values)/n', calc:v=>{
+      const arr=(''+v.vals).split(',').map(s=>parseFloat(s.trim())).filter(n=>!isNaN(n));
+      if (!arr.length) return NaN; return arr.reduce((a,b)=>a+b,0)/arr.length;
+    }, help:'Enter values separated by commas, e.g., 2,3.5,10' },
+  {cat:'Statistics', name:'Median (comma values)', inputs:[{k:'vals',label:'Comma-separated numbers'}],
+    formula:'sort values and pick middle', calc:v=>{
+      const arr=(''+v.vals).split(',').map(s=>parseFloat(s.trim())).filter(n=>!isNaN(n)).sort((a,b)=>a-b);
+      if (!arr.length) return NaN; const m=Math.floor(arr.length/2); return arr.length%2? arr[m] : (arr[m-1]+arr[m])/2;
+    }},
+  {cat:'Statistics', name:'Population Variance (comma values)', inputs:[{k:'vals',label:'Comma-separated numbers'}],
+    formula:'σ² = Σ(x-μ)² / N', calc:v=>{
+      const arr=(''+v.vals).split(',').map(s=>parseFloat(s.trim())).filter(n=>!isNaN(n));
+      if (!arr.length) return NaN; const mean=arr.reduce((a,b)=>a+b,0)/arr.length;
+      return arr.reduce((s,x)=>s+(x-mean)*(x-mean),0)/arr.length;
+    }},
+  {cat:'Statistics', name:'Population Standard Deviation', inputs:[{k:'vals',label:'Comma-separated numbers'}],
+    formula:'σ = sqrt(σ²)', calc:v=>{
+      const arr=(''+v.vals).split(',').map(s=>parseFloat(s.trim())).filter(n=>!isNaN(n));
+      if (!arr.length) return NaN; const mean=arr.reduce((a,b)=>a+b,0)/arr.length;
+      const vs=arr.reduce((s,x)=>s+(x-mean)*(x-mean),0)/arr.length; return Math.sqrt(vs);
+    }},
+
+  /* Math extras */
+  {cat:'Math', name:'Factorial (n!)', inputs:[{k:'n',label:'n (integer ≥ 0)'}],
+    formula:'n!', calc:v=>{ const n=Math.floor(v.n); if (n<0) return NaN; let f=1; for(let i=2;i<=n;i++) f*=i; return f; }},
+  {cat:'Math', name:'nCr Combination (n,r)', inputs:[{k:'n',label:'n'},{k:'r',label:'r'}],
+    formula:'n!/(r!(n-r)!)', calc:v=>{ const n=Math.floor(v.n), r=Math.floor(v.r); if (r<0||r>n) return NaN; function fact(x){let f=1;for(let i=2;i<=x;i++) f*=i; return f;} return fact(n)/(fact(r)*fact(n-r)); }},
+  {cat:'Math', name:'Log base b', inputs:[{k:'x',label:'x (positive)'},{k:'b',label:'base b (positive)'}],
+    formula:'log_b(x) = ln(x)/ln(b)', calc:v=> Math.log(v.x)/Math.log(v.b) },
+  {cat:'Math', name:'Exponential e^x', inputs:[{k:'x',label:'x'}], formula:'e^x', calc:v=> Math.exp(v.x) },
+  {cat:'Math', name:'Permutation nPr', inputs:[{k:'n',label:'n'},{k:'r',label:'r'}],
+    formula:'n!/(n-r)!', calc:v=>{ const n=Math.floor(v.n), r=Math.floor(v.r); if (r<0||r>n) return NaN; function fact(x){let f=1;for(let i=2;i<=x;i++) f*=i; return f;} return fact(n)/fact(n-r); }},
+
+  /* Series / Sequences */
+  {cat:'Series', name:'AP nth term (a + (n-1)d)', inputs:[{k:'a',label:'First term a'},{k:'d',label:'Difference d'},{k:'n',label:'n'}],
+    formula:'a_n = a + (n-1)d', calc:v=> v.a + (v.n-1)*v.d},
+  {cat:'Series', name:'Sum AP (n/2)(a + l)', inputs:[{k:'a',label:'First a'},{k:'l',label:'Last l'},{k:'n',label:'n'}],
+    formula:'S_n = n/2 × (a + l)', calc:v=> (v.n/2)*(v.a+v.l)},
+  {cat:'Series', name:'Sum GP (finite) S_n', inputs:[{k:'a',label:'First a'},{k:'r',label:'Ratio r'},{k:'n',label:'n'}],
+    formula:'S_n = a(1-r^n)/(1-r)', calc:v=> v.r===1? v.a*v.n : v.a*(1-Math.pow(v.r,v.n))/(1-v.r)},
+];
+
+/* ---------- Build UI & logic ---------- */
+const categories = [...new Set(FORMULAS.map(f=>f.cat))];
+
+const catList = document.getElementById('catList');
+const categorySelect = document.getElementById('categorySelect');
+const formulaSelect = document.getElementById('formulaSelect');
+const inputBtn = document.getElementById('inputBtn');
+const inputArea = document.getElementById('inputArea');
+const formulaText = document.getElementById('formulaText');
+const unitText = document.getElementById('unitText');
+const preview = document.getElementById('preview');
+const helpText = document.getElementById('helpText');
+const resultBox = document.getElementById('resultBox');
+const lastCalc = document.getElementById('lastCalc');
+const clearBtn = document.getElementById('clearBtn');
+
+function buildCategoryChips(){
+  catList.innerHTML = '';
+  categories.forEach(cat=>{
+    const d = document.createElement('div'); d.className='chip'; d.textContent = cat;
+    d.onclick = ()=> { selectCategory(cat, d); categorySelect.value = cat; populateFormulas(cat); };
+    catList.appendChild(d);
+  });
+}
+function populateCategorySelect(){
+  categorySelect.innerHTML = '<option value="">-- Category --</option>';
+  categories.forEach(c=> { const opt = document.createElement('option'); opt.value=c; opt.textContent=c; categorySelect.appendChild(opt); });
+}
+function populateFormulas(cat){
+  formulaSelect.innerHTML = '<option value="">-- Formula --</option>';
+  FORMULAS.filter(f=>f.cat===cat).forEach((f,idx)=>{
+    const opt = document.createElement('option');
+    opt.value = FORMULAS.indexOf(f);
+    opt.textContent = f.name;
+    formulaSelect.appendChild(opt);
+  });
+  preview.textContent = '';
+  formulaText.textContent = '';
+  unitText.textContent = '';
+  resultBox.style.display = 'none';
+  helpText.textContent = '';
+}
+
+/* initial populate */
+buildCategoryChips(); populateCategorySelect();
+categorySelect.addEventListener('change', e=> {
+  if (e.target.value) { populateFormulas(e.target.value); highlightChip(e.target.value); }
+});
+function highlightChip(cat){
+  [...catList.children].forEach(c=> c.classList.toggle('active', c.textContent===cat));
+}
+
+/* select default first category */
+if (categories.length) {
+  const first = categories[0];
+  highlightChip(first);
+  populateFormulas(first);
+  categorySelect.value = first;
+}
+
+/* show input fields */
+inputBtn.addEventListener('click', showInputs);
+function showInputs(){
+  const idx = formulaSelect.value;
+  if (!idx) { inputArea.innerHTML = '<div id="inputsPlaceholder">Please choose a formula.</div>'; return; }
+  const F = FORMULAS[idx];
+  preview.textContent = F.formula || '';
+  formulaText.textContent = F.name;
+  unitText.textContent = F.unit? `Unit: ${F.unit}` : '';
+  helpText.textContent = F.help || '';
+  // build inputs
+  const container = document.createElement('div'); container.className='row';
+  F.inputs.forEach(inp=>{
+    const fld = document.createElement('div'); fld.className='field';
+    const label = document.createElement('label'); label.textContent = inp.label || inp.k;
+    const input = document.createElement('input');
+    input.id = 'in_'+inp.k;
+    if (inp.k === 'vals') { input.type='text'; input.placeholder = 'e.g. 2,3.5,10'; input.style.minWidth='220px'; }
+    else { input.type='number'; input.step='any'; input.placeholder = inp.label || inp.k; input.style.width='160px'; }
+    fld.appendChild(label); fld.appendChild(input); container.appendChild(fld);
+  });
+  const btn = document.createElement('button'); btn.className='btn'; btn.textContent='Calculate';
+  btn.onclick = ()=> calculate(idx);
+  const btnWrap = document.createElement('div'); btnWrap.style.marginTop='8px'; btnWrap.appendChild(btn);
+  inputArea.innerHTML = ''; inputArea.appendChild(container); inputArea.appendChild(btnWrap);
+  resultBox.style.display = 'none';
+}
+
+/* reset */
+clearBtn.addEventListener('click', ()=> {
+  inputArea.innerHTML = '<div id="inputsPlaceholder">Select a formula and click <b>Input</b> to enter values.</div>';
+  formulaText.textContent=''; preview.textContent=''; unitText.textContent=''; resultBox.style.display='none'; helpText.textContent='';
+});
+
+/* read inputs */
+function readInputs(F){
+  const vals = {};
+  for (const inp of F.inputs){
+    const el = document.getElementById('in_'+inp.k);
+    if (!el) continue;
+    if (inp.k === 'vals') vals[inp.k] = el.value;
+    else vals[inp.k] = el.value === '' ? NaN : Number(el.value);
+  }
+  return vals;
+}
+
+/* format number to 3 decimal places if not integer */
+function formatNumberOut(x){
+  if (typeof x === 'number' && isFinite(x)){
+    if (Math.abs(Math.round(x)-x) < 1e-9) return Math.round(x).toString();
+    return Number(x.toFixed(3)).toString();
+  }
+  return x;
+}
+
+/* calculate */
+function calculate(idx){
+  const F = FORMULAS[idx];
+  const vals = readInputs(F);
+  // validate
+  for (const inp of F.inputs){
+    if (inp.k === 'vals') continue;
+    const v = vals[inp.k];
+    if (v === undefined || v === null || Number.isNaN(v)){
+      resultBox.style.display='block';
+      resultBox.innerHTML = `<span style="color:#ffb4b4">Please provide numeric value for "${inp.label}"</span>`;
+      return;
+    }
+  }
+  try {
+    const out = F.calc(vals);
+    resultBox.style.display='block';
+    if (typeof out === 'object' && out !== null && !Array.isArray(out)){
+      if (out.error){
+        resultBox.innerHTML = `<div>Result: <span style="color:#ffd6a5">${out.error}</span></div>`;
+      } else {
+        let html = '<div>Result:</div><ul style="margin-left:18px">';
+        for (const k of Object.keys(out)){
+          html += `<li><b>${k}:</b> <span class="val">${formatNumberOut(out[k])}</span></li>`;
+        }
+        html += '</ul>';
+        resultBox.innerHTML = html;
+      }
+    } else {
+      resultBox.innerHTML = `Result: <span class="val">${formatNumberOut(out)}</span> ${F.unit? '<span style="margin-left:8px;color:var(--muted)">'+F.unit+'</span>':''}`;
+    }
+    lastCalc.textContent = new Date().toLocaleString();
+  } catch (err){
+    resultBox.style.display='block';
+    resultBox.innerHTML = `<span style="color:#ffb4b4">Error: ${err.message}</span>`;
+  }
+}
+
+/* allow selecting a formula directly from complete list - populate list */
+(function populateAll(){
+  const sel = document.getElementById('formulaSelect');
+  // keep current options order by category then name
+  sel.innerHTML = '<option value="">-- Formula --</option>';
+  FORMULAS.forEach((f,i)=> {
+    const opt = document.createElement('option'); opt.value = i; opt.textContent = `${f.cat} — ${f.name}`;
+    sel.appendChild(opt);
+  });
+})();
+</script>
+<!-- 🔹 Scientific Calculator Button -->
+<div style="text-align:center; margin-top:20px;">
+  <button id="openSciCalc" style="padding:10px 20px; font-size:1rem; background:#4CAF50; color:white; border:none; border-radius:6px; cursor:pointer;">
+    🔢 Scientific Calculator
+  </button>
+</div>
+
+<!-- 🔹 Scientific Calculator Popup -->
+<div id="sciCalcModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:9999;">
+  <div style="background:white; border-radius:12px; width:90%; max-width:400px; padding:20px; box-shadow:0 4px 15px rgba(0,0,0,0.3); position:relative;">
+    <h2 style="text-align:center; color:#333;">Scientific Calculator</h2>
+    <input id="sciDisplay" type="text" readonly style="width:100%; font-size:1.2rem; text-align:right; margin-bottom:10px; padding:10px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px;">
+      <!-- Top Row -->
+      <button class="btn-func">sin</button>
+      <button class="btn-func">cos</button>
+      <button class="btn-func">tan</button>
+      <button class="btn-func">√</button>
+      <!-- 2nd Row -->
+      <button class="btn-num">(</button>
+      <button class="btn-num">)</button>
+      <button class="btn-func">x²</button>
+      <button class="btn-func">^</button>
+      <!-- 3rd Row -->
+      <button class="btn-num">7</button>
+      <button class="btn-num">8</button>
+      <button class="btn-num">9</button>
+      <button class="btn-op">/</button>
+      <!-- 4th Row -->
+      <button class="btn-num">4</button>
+      <button class="btn-num">5</button>
+      <button class="btn-num">6</button>
+      <button class="btn-op">*</button>
+      <!-- 5th Row -->
+      <button class="btn-num">1</button>
+      <button class="btn-num">2</button>
+      <button class="btn-num">3</button>
+      <button class="btn-op">-</button>
+      <!-- 6th Row -->
+      <button class="btn-num">0</button>
+      <button class="btn-num">.</button>
+      <button id="sciEqual">=</button>
+      <button class="btn-op">+</button>
+      <!-- 7th Row -->
+      <button id="sciPi">π</button>
+      <button id="sciE">e</button>
+      <button id="sciClear" style="background:#f44336; color:white;">C</button>
+      <button id="closeSciCalc" style="background:#555; color:white;">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// 🔸 Open/Close Modal
+document.getElementById('openSciCalc').onclick = ()=> document.getElementById('sciCalcModal').style.display='flex';
+document.getElementById('closeSciCalc').onclick = ()=> document.getElementById('sciCalcModal').style.display='none';
+
+// 🔸 Calculator Logic
+const display = document.getElementById('sciDisplay');
+document.querySelectorAll('.btn-num, .btn-op').forEach(btn=>{
+  btn.addEventListener('click', ()=> display.value += btn.textContent);
+});
+
+document.querySelectorAll('.btn-func').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const func = btn.textContent;
+    switch(func){
+      case 'sin': display.value += 'sin('; break;
+      case 'cos': display.value += 'cos('; break;
+      case 'tan': display.value += 'tan('; break;
+      case '√': display.value += '√('; break;
+      case 'x²': display.value += '**2'; break;
+      case '^': display.value += '**'; break;
+    }
+  });
+});
+
+document.getElementById('sciPi').onclick = ()=> display.value += Math.PI.toFixed(6);
+document.getElementById('sciE').onclick = ()=> display.value += Math.E.toFixed(6);
+document.getElementById('sciClear').onclick = ()=> display.value = '';
+
+document.getElementById('sciEqual').onclick = ()=>{
+  try {
+    let expr = display.value
+      .replace(/√/g,'Math.sqrt')
+      .replace(/sin/g,'Math.sin')
+      .replace(/cos/g,'Math.cos')
+      .replace(/tan/g,'Math.tan');
+    display.value = eval(expr);
+  } catch {
+    display.value = 'Error';
+  }
+};
+</script>
+
+</body>
+</html>
