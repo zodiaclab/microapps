@@ -423,6 +423,7 @@ function calculate(idx){
 })();
 </script>
 
+
 <!-- Scientific Calculator Button (if not present already) -->
 <div style="text-align:center; margin-top:20px;">
   <button id="openSciCalc" style="padding:12px 22px; font-size:1rem; background:#4CAF50; color:white; border:none; border-radius:6px; cursor:pointer;">
@@ -430,12 +431,7 @@ function calculate(idx){
   </button>
 </div>
 
-<!-- ======= Scientific Calculator Modal (DROP-IN REPLACEMENT) ======= -->
-<!-- Add the "open" button somewhere in your page if not present:
-<button id="openSciCalc" style="padding:10px 18px">🔢 Scientific Calculator</button>
--->
-
-<!-- Modal HTML -->
+<!-- ======= Scientific Calculator Modal ======= -->
 <div id="sciCalcModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;z-index:9999;">
   <div id="sciBox" style="width:92%;max-width:480px;background:#fff;border-radius:12px;padding:16px;box-shadow:0 6px 24px rgba(0,0,0,0.35);">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -443,7 +439,6 @@ function calculate(idx){
       <button id="closeSciCalc" style="background:#666;color:#fff;border:none;border-radius:6px;padding:6px 10px;cursor:pointer">Close</button>
     </div>
 
-    <!-- <input id="sciDisplay" readonly style="width:95%;font-size:1.25rem;text-align:right;padding:10px;border-radius:8px;border:1px solid #ddd;margin-bottom:12px"> -->
     <input id="sciDisplay" style="width:95%;font-size:1.25rem;text-align:right;padding:10px;border-radius:8px;border:1px solid #ddd;margin-bottom:12px">
 
     <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px">
@@ -485,21 +480,25 @@ function calculate(idx){
       <button class="sc-btn sc-op">+</button>
       <button id="sciEqual" class="sc-btn" style="background:#ffb74d">=</button>
 
+      <!-- Constants and controls -->
       <button id="sciPI" class="sc-btn sc-const">PI</button>
       <button id="sciE" class="sc-btn sc-const">E</button>
       <button id="sciAbs" class="sc-btn sc-fn" data-t="abs(">abs</button>
-      <button id="sciClear" class="sc-btn" style="background:#f44336;color:#fff">C</button>
+      <button id="sciClear" class="sc-btn" style="background:#f44336;color:#fff">CE</button>
+      <button id="sciDel" class="sc-btn" style="background:#d32f2f;color:#fff">Del</button>
+
+      <button id="sciBack" class="sc-btn" style="background:#ef6c00;color:#fff">Back</button>
       <button id="sciSpace" class="sc-btn" style="visibility:hidden"> </button>
     </div>
 
-    <div style="font-size:0.85rem;color:#444;margin-top:10px">Notes: trig functions expect degrees (sin(30)=0.5). Inverse trig returns degrees. Use ^ for power.</div>
+    <div style="font-size:0.85rem;color:#444;margin-top:10px">
+      Notes: trig functions expect degrees (sin(30)=0.5). Inverse trig returns degrees. Use ^ for power.
+    </div>
   </div>
 </div>
 
 <script>
 /* ======= Reliable evaluation context and helpers ======= */
-
-/* Degree-based trig helpers (available inside evaluation context) */
 const ctx = {
   sin: x => Math.sin(Number(x) * Math.PI / 180),
   cos: x => Math.cos(Number(x) * Math.PI / 180),
@@ -507,10 +506,9 @@ const ctx = {
   asin: x => Math.asin(Number(x)) * 180 / Math.PI,
   acos: x => Math.acos(Number(x)) * 180 / Math.PI,
   atan: x => Math.atan(Number(x)) * 180 / Math.PI,
-
   sqrt: x => Math.sqrt(Number(x)),
-  log: x => (Math.log10 ? Math.log10(Number(x)) : Math.log(Number(x))/Math.LN10), // base-10
-  ln: x => Math.log(Number(x)), // natural log
+  log: x => (Math.log10 ? Math.log10(Number(x)) : Math.log(Number(x))/Math.LN10),
+  ln: x => Math.log(Number(x)),
   exp: x => Math.exp(Number(x)),
   abs: x => Math.abs(Number(x)),
   fact: function(n){
@@ -525,27 +523,13 @@ const ctx = {
   E: Math.E
 };
 
-/* Helper that evaluates expression using only keys from ctx (safer) */
 function safeEval(expr){
-  // pre-process: allow ^ as exponent
   expr = String(expr).replace(/\^/g, '**');
-
-  // Replace any unicode ’×’ or '×' with * (in case)
   expr = expr.replace(/×/g, '*').replace(/÷/g, '/');
+  expr = expr.replace(/\bPI\b/g, ctx.PI).replace(/\bE\b/g, ctx.E);
 
-  // Basic safety: disallow semicolons and letters outside allowed names
-  // Build allowed identifier names (ctx keys): sin|cos|...|PI|E
-  const allowedNamesPattern = Object.keys(ctx).join('|'); // e.g. sin|cos|...
-  // Allow digits, operators, parentheses, comma, decimal, whitespace and allowed names
-  const safePattern = new RegExp(`^[0-9+\\-*/().,\\s\\*\\*]*$`);
-  // We can't fully validate functions with that regex, so we'll rely on controlled evaluation below
-
-  // Build function with ctx keys as arguments
   const argNames = Object.keys(ctx);
   const argValues = argNames.map(k => ctx[k]);
-
-  // Create a Function with named args and return the expression
-  // Example: Function('sin','cos','PI', 'return ( ... )')(sin,cos,PI)
   const func = Function(...argNames, '"use strict"; return (' + expr + ');');
   return func(...argValues);
 }
@@ -555,11 +539,21 @@ const modal = document.getElementById('sciCalcModal');
 const openBtn = document.getElementById('openSciCalc');
 const closeBtn = document.getElementById('closeSciCalc');
 const display = document.getElementById('sciDisplay');
-openBtn && (openBtn.onclick = () => { modal.style.display = 'flex'; display.value = ''; });
+
+/*function focusDisplay() {
+  setTimeout(() => display.focus(), 50);
+}*/
+
+function focusDisplay() {
+  display.focus();
+  const len = display.value.length;
+  display.setSelectionRange(len, len); // Moves caret to end
+}
+
+openBtn && (openBtn.onclick = () => { modal.style.display = 'flex'; display.value = ''; focusDisplay(); });
 closeBtn.onclick = () => modal.style.display = 'none';
 modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
 
-/* set button styles for touch-friendliness */
 document.querySelectorAll('.sc-btn').forEach(b=>{
   b.style.padding = '12px';
   b.style.fontSize = '1.05rem';
@@ -569,60 +563,71 @@ document.querySelectorAll('.sc-btn').forEach(b=>{
   b.style.background = '#1976d2';
   b.style.color = '#fff';
 });
-document.querySelectorAll('.sc-op, .sc-btn.sc-op').forEach(b=> b.style.background = '#1565c0');
+document.querySelectorAll('.sc-op').forEach(b=> b.style.background = '#1565c0');
 document.querySelectorAll('.sc-num').forEach(b=> b.style.background = '#2196f3');
 document.querySelectorAll('.sc-fn').forEach(b=> b.style.background = '#0288d1');
 document.querySelectorAll('.sc-const').forEach(b=> b.style.background = '#1976d2');
 
-/* Numbers and operators: append their text */
+/* Buttons */
 document.querySelectorAll('.sc-num, .sc-op').forEach(btn=>{
-  btn.addEventListener('click', ()=> display.value += btn.textContent);
+  btn.addEventListener('click', ()=> { display.value += btn.textContent; focusDisplay(); });
 });
-
-/* tokens (data-t) append exact token */
 document.querySelectorAll('.sc-tok').forEach(btn=>{
   btn.addEventListener('click', ()=> {
     const t = btn.getAttribute('data-t');
     if (t) display.value += t;
+    focusDisplay();
   });
 });
-
-/* functions: they have data-t token like "sin(" or "fact(" etc. */
 document.querySelectorAll('.sc-fn').forEach(btn=>{
   btn.addEventListener('click', ()=> {
     const t = btn.getAttribute('data-t');
     if (t) display.value += t;
+    focusDisplay();
   });
 });
+document.getElementById('sciPI').addEventListener('click', ()=> { display.value += 'PI'; focusDisplay(); });
+document.getElementById('sciE').addEventListener('click', ()=> { display.value += 'E'; focusDisplay(); });
+document.getElementById('sciClear').addEventListener('click', ()=> { display.value = ''; focusDisplay(); });
+//document.getElementById('sciDel').addEventListener('click', ()=> { display.value = display.value.slice(0, -1); focusDisplay(); });
+document.getElementById('sciBack').addEventListener('click', ()=> { display.value = display.value.slice(0, -1); focusDisplay(); });
 
-/* constants: insert as numeric tokens 'PI' and 'E' are handled by context */
-document.getElementById('sciPI').addEventListener('click', ()=> display.value += 'PI');
-document.getElementById('sciE').addEventListener('click', ()=> display.value += 'E');
+// --- Delete (right delete)
+document.getElementById('sciDel').addEventListener('click', () => {
+  const start = display.selectionStart;
+  const end = display.selectionEnd;
+  if (start === end && start < display.value.length) {
+    display.value = display.value.slice(0, start) + display.value.slice(start + 1);
+    display.setSelectionRange(start, start);
+  } else {
+    display.value = display.value.slice(0, start) + display.value.slice(end);
+    display.setSelectionRange(start, start);
+  }
+  display.focus();
+});
 
-/* clear */
-document.getElementById('sciClear').addEventListener('click', ()=> display.value = '');
 
-/* equals: evaluate with safeEval */
 document.getElementById('sciEqual').addEventListener('click', ()=> {
   const expr = display.value.trim();
   if (!expr) return;
   try {
     const out = safeEval(expr);
-    // Format result: if number, show reasonable precision
     if (typeof out === 'number') {
       if (!isFinite(out)) display.value = String(out);
       else {
-        // show integer without decimals, otherwise 12 significant digits
-        display.value = (Math.abs(Math.round(out) - out) < 1e-12) ? String(Math.round(out)) : Number(out.toPrecision(12)).toString();
+        display.value = (Math.abs(Math.round(out) - out) < 1e-12)
+          ? String(Math.round(out))
+          : Number(out.toPrecision(12)).toString();
       }
     } else {
       display.value = String(out);
     }
   } catch (err) {
     display.value = 'Error';
-    // console.error(err);
   }
+  focusDisplay();
 });
+
 </script>
 
 </body>
