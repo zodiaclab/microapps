@@ -421,101 +421,208 @@ function calculate(idx){
     sel.appendChild(opt);
   });
 })();
-</script>
-<!-- 🔹 Scientific Calculator Button -->
+<!-- Scientific Calculator Button (if not present already) -->
 <div style="text-align:center; margin-top:20px;">
-  <button id="openSciCalc" style="padding:10px 20px; font-size:1rem; background:#4CAF50; color:white; border:none; border-radius:6px; cursor:pointer;">
+  <button id="openSciCalc" style="padding:12px 22px; font-size:1rem; background:#4CAF50; color:white; border:none; border-radius:6px; cursor:pointer;">
     🔢 Scientific Calculator
   </button>
 </div>
 
-<!-- 🔹 Scientific Calculator Popup -->
-<div id="sciCalcModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:9999;">
-  <div style="background:white; border-radius:12px; width:90%; max-width:400px; padding:20px; box-shadow:0 4px 15px rgba(0,0,0,0.3); position:relative;">
-    <h2 style="text-align:center; color:#333;">Scientific Calculator</h2>
-    <input id="sciDisplay" type="text" readonly style="width:100%; font-size:1.2rem; text-align:right; margin-bottom:10px; padding:10px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
-    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px;">
-      <!-- Top Row -->
-      <button class="btn-func">sin</button>
-      <button class="btn-func">cos</button>
-      <button class="btn-func">tan</button>
-      <button class="btn-func">√</button>
-      <!-- 2nd Row -->
-      <button class="btn-num">(</button>
-      <button class="btn-num">)</button>
-      <button class="btn-func">x²</button>
-      <button class="btn-func">^</button>
-      <!-- 3rd Row -->
-      <button class="btn-num">7</button>
-      <button class="btn-num">8</button>
-      <button class="btn-num">9</button>
-      <button class="btn-op">/</button>
-      <!-- 4th Row -->
-      <button class="btn-num">4</button>
-      <button class="btn-num">5</button>
-      <button class="btn-num">6</button>
-      <button class="btn-op">*</button>
-      <!-- 5th Row -->
-      <button class="btn-num">1</button>
-      <button class="btn-num">2</button>
-      <button class="btn-num">3</button>
-      <button class="btn-op">-</button>
-      <!-- 6th Row -->
-      <button class="btn-num">0</button>
-      <button class="btn-num">.</button>
-      <button id="sciEqual">=</button>
-      <button class="btn-op">+</button>
-      <!-- 7th Row -->
-      <button id="sciPi">π</button>
-      <button id="sciE">e</button>
-      <button id="sciClear" style="background:#f44336; color:white;">C</button>
-      <button id="closeSciCalc" style="background:#555; color:white;">Close</button>
+<!-- ======= Scientific Calculator Modal (DROP-IN REPLACEMENT) ======= -->
+<!-- Add the "open" button somewhere in your page if not present:
+<button id="openSciCalc" style="padding:10px 18px">🔢 Scientific Calculator</button>
+-->
+
+<!-- Modal HTML -->
+<div id="sciCalcModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;z-index:9999;">
+  <div id="sciBox" style="width:92%;max-width:480px;background:#fff;border-radius:12px;padding:16px;box-shadow:0 6px 24px rgba(0,0,0,0.35);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h3 style="margin:0;color:#222">Scientific Calculator</h3>
+      <button id="closeSciCalc" style="background:#666;color:#fff;border:none;border-radius:6px;padding:6px 10px;cursor:pointer">Close</button>
     </div>
+
+    <!-- <input id="sciDisplay" readonly style="width:95%;font-size:1.25rem;text-align:right;padding:10px;border-radius:8px;border:1px solid #ddd;margin-bottom:12px"> -->
+    <input id="sciDisplay" style="width:95%;font-size:1.25rem;text-align:right;padding:10px;border-radius:8px;border:1px solid #ddd;margin-bottom:12px">
+
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px">
+      <!-- Function row -->
+      <button class="sc-btn sc-fn" data-t="sin(">sin</button>
+      <button class="sc-btn sc-fn" data-t="cos(">cos</button>
+      <button class="sc-btn sc-fn" data-t="tan(">tan</button>
+      <button class="sc-btn sc-fn" data-t="asin(">asin</button>
+      <button class="sc-btn sc-fn" data-t="acos(">acos</button>
+
+      <button class="sc-btn sc-fn" data-t="atan(">atan</button>
+      <button class="sc-btn sc-fn" data-t="sqrt(">√</button>
+      <button class="sc-btn sc-fn" data-t="log(">log</button>
+      <button class="sc-btn sc-fn" data-t="ln(">ln</button>
+      <button class="sc-btn sc-fn" data-t="exp(">eˣ</button>
+
+      <!-- Numbers -->
+      <button class="sc-btn sc-num">7</button>
+      <button class="sc-btn sc-num">8</button>
+      <button class="sc-btn sc-num">9</button>
+      <button class="sc-btn sc-op">/</button>
+      <button class="sc-btn sc-tok" data-t="("> ( </button>
+
+      <button class="sc-btn sc-num">4</button>
+      <button class="sc-btn sc-num">5</button>
+      <button class="sc-btn sc-num">6</button>
+      <button class="sc-btn sc-op">*</button>
+      <button class="sc-btn sc-tok" data-t=")"> ) </button>
+
+      <button class="sc-btn sc-num">1</button>
+      <button class="sc-btn sc-num">2</button>
+      <button class="sc-btn sc-num">3</button>
+      <button class="sc-btn sc-op">-</button>
+      <button class="sc-btn sc-tok" data-t="**"> ^ </button>
+
+      <button class="sc-btn sc-num">0</button>
+      <button class="sc-btn sc-num">.</button>
+      <button class="sc-btn sc-fn" data-t="fact(">fact</button>
+      <button class="sc-btn sc-op">+</button>
+      <button id="sciEqual" class="sc-btn" style="background:#ffb74d">=</button>
+
+      <button id="sciPI" class="sc-btn sc-const">PI</button>
+      <button id="sciE" class="sc-btn sc-const">E</button>
+      <button id="sciAbs" class="sc-btn sc-fn" data-t="abs(">abs</button>
+      <button id="sciClear" class="sc-btn" style="background:#f44336;color:#fff">C</button>
+      <button id="sciSpace" class="sc-btn" style="visibility:hidden"> </button>
+    </div>
+
+    <div style="font-size:0.85rem;color:#444;margin-top:10px">Notes: trig functions expect degrees (sin(30)=0.5). Inverse trig returns degrees. Use ^ for power.</div>
   </div>
 </div>
 
 <script>
-// 🔸 Open/Close Modal
-document.getElementById('openSciCalc').onclick = ()=> document.getElementById('sciCalcModal').style.display='flex';
-document.getElementById('closeSciCalc').onclick = ()=> document.getElementById('sciCalcModal').style.display='none';
+/* ======= Reliable evaluation context and helpers ======= */
 
-// 🔸 Calculator Logic
+/* Degree-based trig helpers (available inside evaluation context) */
+const ctx = {
+  sin: x => Math.sin(Number(x) * Math.PI / 180),
+  cos: x => Math.cos(Number(x) * Math.PI / 180),
+  tan: x => Math.tan(Number(x) * Math.PI / 180),
+  asin: x => Math.asin(Number(x)) * 180 / Math.PI,
+  acos: x => Math.acos(Number(x)) * 180 / Math.PI,
+  atan: x => Math.atan(Number(x)) * 180 / Math.PI,
+
+  sqrt: x => Math.sqrt(Number(x)),
+  log: x => (Math.log10 ? Math.log10(Number(x)) : Math.log(Number(x))/Math.LN10), // base-10
+  ln: x => Math.log(Number(x)), // natural log
+  exp: x => Math.exp(Number(x)),
+  abs: x => Math.abs(Number(x)),
+  fact: function(n){
+    n = Math.floor(Number(n));
+    if (isNaN(n) || n < 0) return NaN;
+    if (n === 0 || n === 1) return 1;
+    let f = 1;
+    for (let i=2;i<=n;i++) f *= i;
+    return f;
+  },
+  PI: Math.PI,
+  E: Math.E
+};
+
+/* Helper that evaluates expression using only keys from ctx (safer) */
+function safeEval(expr){
+  // pre-process: allow ^ as exponent
+  expr = String(expr).replace(/\^/g, '**');
+
+  // Replace any unicode ’×’ or '×' with * (in case)
+  expr = expr.replace(/×/g, '*').replace(/÷/g, '/');
+
+  // Basic safety: disallow semicolons and letters outside allowed names
+  // Build allowed identifier names (ctx keys): sin|cos|...|PI|E
+  const allowedNamesPattern = Object.keys(ctx).join('|'); // e.g. sin|cos|...
+  // Allow digits, operators, parentheses, comma, decimal, whitespace and allowed names
+  const safePattern = new RegExp(`^[0-9+\\-*/().,\\s\\*\\*]*$`);
+  // We can't fully validate functions with that regex, so we'll rely on controlled evaluation below
+
+  // Build function with ctx keys as arguments
+  const argNames = Object.keys(ctx);
+  const argValues = argNames.map(k => ctx[k]);
+
+  // Create a Function with named args and return the expression
+  // Example: Function('sin','cos','PI', 'return ( ... )')(sin,cos,PI)
+  const func = Function(...argNames, '"use strict"; return (' + expr + ');');
+  return func(...argValues);
+}
+
+/* ======= Modal controls and button wiring ======= */
+const modal = document.getElementById('sciCalcModal');
+const openBtn = document.getElementById('openSciCalc');
+const closeBtn = document.getElementById('closeSciCalc');
 const display = document.getElementById('sciDisplay');
-document.querySelectorAll('.btn-num, .btn-op').forEach(btn=>{
+openBtn && (openBtn.onclick = () => { modal.style.display = 'flex'; display.value = ''; });
+closeBtn.onclick = () => modal.style.display = 'none';
+modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
+
+/* set button styles for touch-friendliness */
+document.querySelectorAll('.sc-btn').forEach(b=>{
+  b.style.padding = '12px';
+  b.style.fontSize = '1.05rem';
+  b.style.borderRadius = '8px';
+  b.style.border = 'none';
+  b.style.cursor = 'pointer';
+  b.style.background = '#1976d2';
+  b.style.color = '#fff';
+});
+document.querySelectorAll('.sc-op, .sc-btn.sc-op').forEach(b=> b.style.background = '#1565c0');
+document.querySelectorAll('.sc-num').forEach(b=> b.style.background = '#2196f3');
+document.querySelectorAll('.sc-fn').forEach(b=> b.style.background = '#0288d1');
+document.querySelectorAll('.sc-const').forEach(b=> b.style.background = '#1976d2');
+
+/* Numbers and operators: append their text */
+document.querySelectorAll('.sc-num, .sc-op').forEach(btn=>{
   btn.addEventListener('click', ()=> display.value += btn.textContent);
 });
 
-document.querySelectorAll('.btn-func').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    const func = btn.textContent;
-    switch(func){
-      case 'sin': display.value += 'sin('; break;
-      case 'cos': display.value += 'cos('; break;
-      case 'tan': display.value += 'tan('; break;
-      case '√': display.value += '√('; break;
-      case 'x²': display.value += '**2'; break;
-      case '^': display.value += '**'; break;
-    }
+/* tokens (data-t) append exact token */
+document.querySelectorAll('.sc-tok').forEach(btn=>{
+  btn.addEventListener('click', ()=> {
+    const t = btn.getAttribute('data-t');
+    if (t) display.value += t;
   });
 });
 
-document.getElementById('sciPi').onclick = ()=> display.value += Math.PI.toFixed(6);
-document.getElementById('sciE').onclick = ()=> display.value += Math.E.toFixed(6);
-document.getElementById('sciClear').onclick = ()=> display.value = '';
+/* functions: they have data-t token like "sin(" or "fact(" etc. */
+document.querySelectorAll('.sc-fn').forEach(btn=>{
+  btn.addEventListener('click', ()=> {
+    const t = btn.getAttribute('data-t');
+    if (t) display.value += t;
+  });
+});
 
-document.getElementById('sciEqual').onclick = ()=>{
+/* constants: insert as numeric tokens 'PI' and 'E' are handled by context */
+document.getElementById('sciPI').addEventListener('click', ()=> display.value += 'PI');
+document.getElementById('sciE').addEventListener('click', ()=> display.value += 'E');
+
+/* clear */
+document.getElementById('sciClear').addEventListener('click', ()=> display.value = '');
+
+/* equals: evaluate with safeEval */
+document.getElementById('sciEqual').addEventListener('click', ()=> {
+  const expr = display.value.trim();
+  if (!expr) return;
   try {
-    let expr = display.value
-      .replace(/√/g,'Math.sqrt')
-      .replace(/sin/g,'Math.sin')
-      .replace(/cos/g,'Math.cos')
-      .replace(/tan/g,'Math.tan');
-    display.value = eval(expr);
-  } catch {
+    const out = safeEval(expr);
+    // Format result: if number, show reasonable precision
+    if (typeof out === 'number') {
+      if (!isFinite(out)) display.value = String(out);
+      else {
+        // show integer without decimals, otherwise 12 significant digits
+        display.value = (Math.abs(Math.round(out) - out) < 1e-12) ? String(Math.round(out)) : Number(out.toPrecision(12)).toString();
+      }
+    } else {
+      display.value = String(out);
+    }
+  } catch (err) {
     display.value = 'Error';
+    // console.error(err);
   }
-};
+});
 </script>
+
 
 </body>
 </html>
