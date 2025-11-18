@@ -1,259 +1,326 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stopwatch + Timer Suite</title>
+<title>Stopwatch + Timer + Counter + Clock</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
-  body {
-    font-family: Arial, sans-serif;
-    background: #f3f3f3;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    min-height: 100vh;
-  }
+body {
+  font-family: Arial, sans-serif;
+  background: #f5f5f5;
+  color: #222;
+  margin: 0;
+  padding: 20px;
+  transition: 0.3s;
+}
 
-  .container {
-    width: 95%;
-    max-width: 460px;
-    background: white;
-    margin-top: 30px;
-    padding: 22px;
-    border-radius: 12px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
-  }
+.dark {
+  background: #121212;
+  color: #eee;
+}
 
-  .tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 18px;
-  }
+.container {
+  max-width: 450px;
+  margin: auto;
+  padding: 20px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.18);
+  transition: 0.3s;
+}
 
-  .tab {
-    flex: 1;
-    padding: 10px 0;
-    text-align: center;
-    cursor: pointer;
-    border-radius: 6px;
-    background: #ddd;
-    font-weight: bold;
-  }
+.dark .container {
+  background: #5e5e5e;
+}
 
-  .tab.active {
-    background: #1976d2;
-    color: white;
-  }
+h2 {
+  text-align: center;
+  margin-bottom: 15px;
+}
 
-  .sec {
-    display: none;
-  }
+/* Button style */
+button {
+  padding: 12px;
+  font-size: 1.1rem;
+  border-radius: 8px;
+  border: 2px solid #1976d2;
+  cursor: pointer;
+  background: #2196f3;
+  color: #fff;
+  transition: 0.25s;
+  width: 100%;
+}
+button:hover { background: #1e88e5; border-color:#42a5f5; }
+button:active { background:#1565c0; }
 
-  .sec.active {
-    display: block;
-  }
+.stop-btn { background:#e53935 !important; border-color:#ff5252 !important; }
+.stop-btn:hover { background:#d32f2f !important; }
 
-  .display {
-    font-size: 2.4rem;
-    text-align: center;
-    margin: 18px 0;
-    color: #222;
-  }
+.export-btn { background:#6a1b9a !important; border-color:#9c27b0 !important; }
+.export-btn:hover { background:#8e24aa !important; }
 
-  button {
-    padding: 12px;
-    width: 31%;
-    font-size: 1rem;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    background: #1976d2;
-    color: white;
-    margin: 4px 1%;
-  }
+.utility-btn { background:#455a64 !important; border-color:#78909c !important; }
+.utility-btn:hover { background:#37474f !important; }
 
-  input {
-    width: 95%;
-    padding: 10px;
-    font-size: 1.1rem;
-    border-radius: 6px;
-    border: 1px solid #aaa;
-  }
+/* Dark mode */
+.dark button { background:#263238; border:2px solid #90caf9; color:#fff; }
+.dark button:hover { background:#37474f; }
 
-  .laps {
-    max-height: 150px;
-    overflow-y: auto;
-    margin-top: 10px;
-    border: 1px solid #ccc;
-    padding: 8px;
-    border-radius: 6px;
-    font-size: 0.95rem;
-  }
+.dark .stop-btn { background:#b71c1c !important; border-color:#ef5350 !important; }
+.dark .export-btn { background:#4a148c !important; border-color:#ba68c8 !important; }
+.dark .utility-btn { background:#102027 !important; border-color:#4f5b62 !important; }
+
+.row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.row button { flex:1; }
+
+input {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: 2px solid #1976d2;
+  font-size: 1.2rem;
+  background: #fff;
+}
+.dark input { background:#263238; color:#fff; border-color:#90caf9; }
+
+.laps-box {
+  max-height: 140px;
+  overflow-y: auto;
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #bbb;
+  background: #fafafa;
+}
+.dark .laps-box { background:#1c1c1c; border-color:#555; }
+
+.clock {
+  font-size: 1.8rem;
+  text-align: center;
+  margin-bottom: 20px;
+  font-weight: bold;
+}
+.timer-input {
+  width: 100%;
+  max-width: 350px;
+  display: block;         /* required for margin auto */
+  margin: 0 auto;         /* centers horizontally */
+  text-align: center;     /* optional: centers the text inside */
+}
+
 </style>
 </head>
-
 <body>
+
 <div class="container">
 
-  <!-- TABS -->
-  <div class="tabs">
-    <div class="tab active" data-target="stopwatch">⏱ Stopwatch</div>
-    <div class="tab" data-target="counter">⏲ Timer Counter</div>
-    <div class="tab" data-target="countdown">⏳ Countdown Timer</div>
-  </div>
+  <!-- CLOCK -->
+  <div class="clock" id="liveClock">--:--:--</div>
 
-  <!-- STOPWATCH SECTION -->
-  <div id="stopwatch" class="sec active">
-    <div class="display" id="swDisplay">00:00:00.000</div>
+  <button id="toggleTheme" class="utility-btn" style="margin-bottom:20px;">
+    Toggle Dark / Light Mode
+  </button>
 
+  <!-- STOPWATCH -->
+  <h2>⏱ Stopwatch</h2>
+  <div id="swDisplay" style="font-size:2rem;text-align:center;margin-bottom:12px;">00:00:00.000</div>
+
+  <div class="row">
     <button id="swStart">Start</button>
-    <button id="swStop">Stop</button>
-    <button id="swReset" style="background:#d32f2f">Reset</button>
-
-    <button id="swLap" style="width:96%;background:#ef6c00">Lap</button>
-
-    <div id="swLaps" class="laps"></div>
+    <button id="swStop" class="stop-btn">Stop</button>
   </div>
 
-  <!-- TIMER COUNTER (COUNT UP TIMER) -->
-  <div id="counter" class="sec">
-    <div class="display" id="cuDisplay">00:00:00</div>
+  <div class="row">
+    <button id="swLap" class="utility-btn">Lap</button>
+    <button id="swReset" class="utility-btn">Reset</button>
+  </div>
 
+  <button id="swExport" class="export-btn" style="margin-bottom:15px;">Export Laps</button>
+
+  <div class="laps-box" id="lapsBox"></div>
+
+
+  <!-- COUNT-UP TIMER (NEW) -->
+  <h2>⏳ Timer Counter (Count-Up)</h2>
+
+  <div id="cuDisplay" style="font-size:2rem;text-align:center;margin:12px 0;">00:00</div>
+
+  <div class="row">
     <button id="cuStart">Start</button>
-    <button id="cuStop">Stop</button>
-    <button id="cuReset" style="background:#d32f2f">Reset</button>
+    <button id="cuStop" class="stop-btn">Stop</button>
   </div>
+
+  <button id="cuReset" class="utility-btn" style="margin-bottom:20px;">Reset</button>
+
 
   <!-- COUNTDOWN TIMER -->
-  <div id="countdown" class="sec">
-    <input id="cdInput" placeholder="Enter seconds (e.g., 90)" />
+  <h2>⏳ Countdown Timer</h2>
 
-    <div class="display" id="cdDisplay">00:00</div>
+  <input id="timerInput" class="timer-input" placeholder="Enter seconds (example: 60)"/>
 
-    <button id="cdStart">Start</button>
-    <button id="cdPause">Pause</button>
-    <button id="cdReset" style="background:#d32f2f">Reset</button>
+  <div id="timerDisplay" style="font-size:2rem;text-align:center;margin:12px 0;">00:00</div>
+
+  <div class="row">
+    <button id="tmStart">Start</button>
+    <button id="tmStop" class="stop-btn">Stop</button>
   </div>
-<div><a href="https://zodiaclab.github.io/microapps/" style="color:var(--accent1);text-decoration:none">← Back / Home</a></div>
+<div align=center><a href="https://zodiaclab.github.io/microapps/" style="color:var(--accent1);text-decoration:none">← Back / Home</a></div>
+
 </div>
 
+
+<!-- ALARM SOUND -->
+<audio id="alarmSound">
+  <source src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" type="audio/ogg">
+</audio>
+
 <script>
-/* --------------------------------------------------------
-                TAB SWITCHING
----------------------------------------------------------*/
-document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.sec').forEach(s => s.classList.remove('active'));
+/* CLOCK */
+function updateClock() {
+  document.getElementById("liveClock").textContent =
+    new Date().toLocaleTimeString();
+}
+setInterval(updateClock, 1000); updateClock();
 
-    tab.classList.add('active');
-    document.getElementById(tab.getAttribute('data-target')).classList.add('active');
-  });
-});
+/* THEME */
+document.getElementById("toggleTheme").onclick = () =>
+  document.body.classList.toggle("dark");
 
-/* --------------------------------------------------------
-                STOPWATCH
----------------------------------------------------------*/
-let swInterval, swStartTime, swElapsed = 0;
 
+/* -------------------------
+   STOPWATCH
+--------------------------*/
+let swRunning = false;
+let swElapsed = 0;
+let swStartTime = 0;
+let swInterval;
 const swDisplay = document.getElementById("swDisplay");
-const swLaps = document.getElementById("swLaps");
 
-function formatMS(ms) {
-  let d = new Date(ms);
+function fmtMS(ms) {
+  let h = Math.floor(ms / 3600000);
+  let m = Math.floor((ms % 3600000) / 60000);
+  let s = Math.floor((ms % 60000) / 1000);
+  let msPart = ms % 1000;
   return (
-    String(d.getUTCHours()).padStart(2,"0") + ":" +
-    String(d.getUTCMinutes()).padStart(2,"0") + ":" +
-    String(d.getUTCSeconds()).padStart(2,"0") + "." +
-    String(d.getUTCMilliseconds()).padStart(3,"0")
+    String(h).padStart(2,"0") + ":" +
+    String(m).padStart(2,"0") + ":" +
+    String(s).padStart(2,"0") + "." +
+    String(msPart).padStart(3,"0")
   );
 }
 
 document.getElementById("swStart").onclick = () => {
-  swStartTime = Date.now() - swElapsed;
-  swInterval = setInterval(() => {
-    swElapsed = Date.now() - swStartTime;
-    swDisplay.textContent = formatMS(swElapsed);
-  }, 10);
+  if (!swRunning) {
+    swRunning = true;
+    swStartTime = Date.now() - swElapsed;
+    swInterval = setInterval(() => {
+      swElapsed = Date.now() - swStartTime;
+      swDisplay.textContent = fmtMS(swElapsed);
+    }, 10);
+  }
 };
 
-document.getElementById("swStop").onclick = () => clearInterval(swInterval);
+document.getElementById("swStop").onclick = () => {
+  swRunning = false;
+  clearInterval(swInterval);
+};
 
 document.getElementById("swReset").onclick = () => {
+  swRunning = false;
   clearInterval(swInterval);
   swElapsed = 0;
   swDisplay.textContent = "00:00:00.000";
-  swLaps.innerHTML = "";
+  document.getElementById("lapsBox").innerHTML = "";
 };
 
 document.getElementById("swLap").onclick = () => {
+  if (!swRunning) return;
   let lap = document.createElement("div");
-  lap.textContent = formatMS(swElapsed);
-  swLaps.appendChild(lap);
+  lap.textContent = fmtMS(swElapsed);
+  lapsBox.appendChild(lap);
 };
 
-/* --------------------------------------------------------
-                TIMER COUNTER (COUNT UP)
----------------------------------------------------------*/
-let cuInterval, cuSec = 0;
+document.getElementById("swExport").onclick = () => {
+  let lines = [];
+  document.querySelectorAll("#lapsBox div").forEach(div => lines.push(div.textContent));
+  if (!lines.length) return;
+  const blob = new Blob([lines.join("\n")], { type:"text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "laps.csv";
+  a.click();
+};
+
+
+/* -------------------------
+   COUNT-UP TIMER  (NEW)
+--------------------------*/
+let cuInterval;
+let cuSeconds = 0;
 const cuDisplay = document.getElementById("cuDisplay");
 
-function formatTime(sec){
-  let h = Math.floor(sec/3600);
-  let m = Math.floor((sec%3600)/60);
+function fmtMMSS(sec) {
+  let m = Math.floor(sec / 60);
   let s = sec % 60;
-  return String(h).padStart(2,'0') + ":" + 
-         String(m).padStart(2,'0') + ":" +
-         String(s).padStart(2,'0');
+  return String(m).padStart(2,"0") + ":" + String(s).padStart(2,"0");
 }
 
 document.getElementById("cuStart").onclick = () => {
-  cuInterval = setInterval(()=> {
-    cuSec++;
-    cuDisplay.textContent = formatTime(cuSec);
+  clearInterval(cuInterval);
+  cuInterval = setInterval(() => {
+    cuSeconds++;
+    cuDisplay.textContent = fmtMMSS(cuSeconds);
   }, 1000);
 };
 
-document.getElementById("cuStop").onclick = () => clearInterval(cuInterval);
+document.getElementById("cuStop").onclick = () => {
+  clearInterval(cuInterval);
+};
 
 document.getElementById("cuReset").onclick = () => {
   clearInterval(cuInterval);
-  cuSec = 0;
-  cuDisplay.textContent = "00:00:00";
+  cuSeconds = 0;
+  cuDisplay.textContent = "00:00";
 };
 
-/* --------------------------------------------------------
-                COUNTDOWN TIMER
----------------------------------------------------------*/
-let cdInterval, cdRemaining = 0;
-const cdDisplay = document.getElementById("cdDisplay");
 
-document.getElementById("cdStart").onclick = () => {
-  if (!cdRemaining) cdRemaining = Number(document.getElementById("cdInput").value || 0);
+/* -------------------------
+   COUNTDOWN TIMER (FIXED)
+--------------------------*/
+let tmInterval;
+let tmRemaining = 0;
+const alarm = document.getElementById("alarmSound");
 
-  cdInterval = setInterval(() => {
-    if (cdRemaining <= 0) {
-      clearInterval(cdInterval);
-      cdDisplay.textContent = "DONE!";
-      return;
+document.getElementById("tmStart").onclick = () => {
+  let val = parseInt(document.getElementById("timerInput").value);
+
+  if (!tmRemaining) {
+    if (isNaN(val) || val <= 0) return;
+    tmRemaining = val;
+  }
+
+  clearInterval(tmInterval);
+  tmInterval = setInterval(() => {
+    tmRemaining--;
+    document.getElementById("timerDisplay").textContent = fmtMMSS(tmRemaining);
+
+    if (tmRemaining <= 0) {
+      clearInterval(tmInterval);
+      tmRemaining = 0;
+      document.getElementById("timerDisplay").textContent = "00:00";
+      alarm.play();
     }
-    cdRemaining--;
-    cdDisplay.textContent =
-      String(Math.floor(cdRemaining/60)).padStart(2,'0') + ":" +
-      String(cdRemaining%60).padStart(2,'0');
   }, 1000);
 };
 
-document.getElementById("cdPause").onclick = () => clearInterval(cdInterval);
-
-document.getElementById("cdReset").onclick = () => {
-  clearInterval(cdInterval);
-  cdRemaining = 0;
-  cdDisplay.textContent = "00:00";
+document.getElementById("tmStop").onclick = () => {
+  clearInterval(tmInterval);
 };
-
 </script>
 
 </body>
