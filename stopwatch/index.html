@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Stopwatch + Timer Suite</title>
+
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #f3f3f3;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+  }
+
+  .container {
+    width: 95%;
+    max-width: 460px;
+    background: white;
+    margin-top: 30px;
+    padding: 22px;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  }
+
+  .tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 10px 0;
+    text-align: center;
+    cursor: pointer;
+    border-radius: 6px;
+    background: #ddd;
+    font-weight: bold;
+  }
+
+  .tab.active {
+    background: #1976d2;
+    color: white;
+  }
+
+  .sec {
+    display: none;
+  }
+
+  .sec.active {
+    display: block;
+  }
+
+  .display {
+    font-size: 2.4rem;
+    text-align: center;
+    margin: 18px 0;
+    color: #222;
+  }
+
+  button {
+    padding: 12px;
+    width: 31%;
+    font-size: 1rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    background: #1976d2;
+    color: white;
+    margin: 4px 1%;
+  }
+
+  input {
+    width: 95%;
+    padding: 10px;
+    font-size: 1.1rem;
+    border-radius: 6px;
+    border: 1px solid #aaa;
+  }
+
+  .laps {
+    max-height: 150px;
+    overflow-y: auto;
+    margin-top: 10px;
+    border: 1px solid #ccc;
+    padding: 8px;
+    border-radius: 6px;
+    font-size: 0.95rem;
+  }
+</style>
+</head>
+
+<body>
+<div class="container">
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab active" data-target="stopwatch">⏱ Stopwatch</div>
+    <div class="tab" data-target="counter">⏲ Timer Counter</div>
+    <div class="tab" data-target="countdown">⏳ Countdown Timer</div>
+  </div>
+
+  <!-- STOPWATCH SECTION -->
+  <div id="stopwatch" class="sec active">
+    <div class="display" id="swDisplay">00:00:00.000</div>
+
+    <button id="swStart">Start</button>
+    <button id="swStop">Stop</button>
+    <button id="swReset" style="background:#d32f2f">Reset</button>
+
+    <button id="swLap" style="width:96%;background:#ef6c00">Lap</button>
+
+    <div id="swLaps" class="laps"></div>
+  </div>
+
+  <!-- TIMER COUNTER (COUNT UP TIMER) -->
+  <div id="counter" class="sec">
+    <div class="display" id="cuDisplay">00:00:00</div>
+
+    <button id="cuStart">Start</button>
+    <button id="cuStop">Stop</button>
+    <button id="cuReset" style="background:#d32f2f">Reset</button>
+  </div>
+
+  <!-- COUNTDOWN TIMER -->
+  <div id="countdown" class="sec">
+    <input id="cdInput" placeholder="Enter seconds (e.g., 90)" />
+
+    <div class="display" id="cdDisplay">00:00</div>
+
+    <button id="cdStart">Start</button>
+    <button id="cdPause">Pause</button>
+    <button id="cdReset" style="background:#d32f2f">Reset</button>
+  </div>
+
+</div>
+
+<script>
+/* --------------------------------------------------------
+                TAB SWITCHING
+---------------------------------------------------------*/
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.sec').forEach(s => s.classList.remove('active'));
+
+    tab.classList.add('active');
+    document.getElementById(tab.getAttribute('data-target')).classList.add('active');
+  });
+});
+
+/* --------------------------------------------------------
+                STOPWATCH
+---------------------------------------------------------*/
+let swInterval, swStartTime, swElapsed = 0;
+
+const swDisplay = document.getElementById("swDisplay");
+const swLaps = document.getElementById("swLaps");
+
+function formatMS(ms) {
+  let d = new Date(ms);
+  return (
+    String(d.getUTCHours()).padStart(2,"0") + ":" +
+    String(d.getUTCMinutes()).padStart(2,"0") + ":" +
+    String(d.getUTCSeconds()).padStart(2,"0") + "." +
+    String(d.getUTCMilliseconds()).padStart(3,"0")
+  );
+}
+
+document.getElementById("swStart").onclick = () => {
+  swStartTime = Date.now() - swElapsed;
+  swInterval = setInterval(() => {
+    swElapsed = Date.now() - swStartTime;
+    swDisplay.textContent = formatMS(swElapsed);
+  }, 10);
+};
+
+document.getElementById("swStop").onclick = () => clearInterval(swInterval);
+
+document.getElementById("swReset").onclick = () => {
+  clearInterval(swInterval);
+  swElapsed = 0;
+  swDisplay.textContent = "00:00:00.000";
+  swLaps.innerHTML = "";
+};
+
+document.getElementById("swLap").onclick = () => {
+  let lap = document.createElement("div");
+  lap.textContent = formatMS(swElapsed);
+  swLaps.appendChild(lap);
+};
+
+/* --------------------------------------------------------
+                TIMER COUNTER (COUNT UP)
+---------------------------------------------------------*/
+let cuInterval, cuSec = 0;
+const cuDisplay = document.getElementById("cuDisplay");
+
+function formatTime(sec){
+  let h = Math.floor(sec/3600);
+  let m = Math.floor((sec%3600)/60);
+  let s = sec % 60;
+  return String(h).padStart(2,'0') + ":" + 
+         String(m).padStart(2,'0') + ":" +
+         String(s).padStart(2,'0');
+}
+
+document.getElementById("cuStart").onclick = () => {
+  cuInterval = setInterval(()=> {
+    cuSec++;
+    cuDisplay.textContent = formatTime(cuSec);
+  }, 1000);
+};
+
+document.getElementById("cuStop").onclick = () => clearInterval(cuInterval);
+
+document.getElementById("cuReset").onclick = () => {
+  clearInterval(cuInterval);
+  cuSec = 0;
+  cuDisplay.textContent = "00:00:00";
+};
+
+/* --------------------------------------------------------
+                COUNTDOWN TIMER
+---------------------------------------------------------*/
+let cdInterval, cdRemaining = 0;
+const cdDisplay = document.getElementById("cdDisplay");
+
+document.getElementById("cdStart").onclick = () => {
+  if (!cdRemaining) cdRemaining = Number(document.getElementById("cdInput").value || 0);
+
+  cdInterval = setInterval(() => {
+    if (cdRemaining <= 0) {
+      clearInterval(cdInterval);
+      cdDisplay.textContent = "DONE!";
+      return;
+    }
+    cdRemaining--;
+    cdDisplay.textContent =
+      String(Math.floor(cdRemaining/60)).padStart(2,'0') + ":" +
+      String(cdRemaining%60).padStart(2,'0');
+  }, 1000);
+};
+
+document.getElementById("cdPause").onclick = () => clearInterval(cdInterval);
+
+document.getElementById("cdReset").onclick = () => {
+  clearInterval(cdInterval);
+  cdRemaining = 0;
+  cdDisplay.textContent = "00:00";
+};
+
+</script>
+
+</body>
+</html>
