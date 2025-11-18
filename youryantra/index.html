@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Divine Yantra from DOB</title>
+<style>
+    body { font-family: Arial, sans-serif; background: #f3f4f6; padding: 20px; }
+    .container {
+        max-width: 900px; margin: auto; background: white; padding: 20px;
+        border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    h2 { text-align: center; color: #2d3748; }
+    label { display: block; margin: 10px 0 5px; font-weight: bold; }
+    input[type=date] {
+        padding: 8px; width: 100%; margin-bottom: 15px;
+        border: 1px solid #cbd5e0; border-radius: 6px; font-size: 1rem;
+    }
+    button {
+        background: #4f46e5; color: white; padding: 10px 15px;
+        border: none; border-radius: 6px; font-size: 1rem;
+        cursor: pointer; width: 100%;
+
+    }
+    button:hover { background: #3730a3; }
+    table {
+        border-collapse: collapse; margin: 20px auto;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+/* for print button only */
+.print-btn {
+  padding: 10px 20px;        /* custom size */
+  font-size: 14px;
+  border: none;
+  border-radius: 8px;
+  background-color: orange;  /* button color */
+  color: white;
+  cursor: pointer;
+  transition: 0.3s;
+  justify-content: center;
+  align-items: center;
+  width: 25%
+}
+
+/* for print button only */
+.button-container {
+  display: flex;
+  justify-content: center;   /* centers horizontally */
+  align-items: center;       /* centers vertically (if needed) */
+  gap: 15px;                 /* space between buttons */
+  margin: 15px 0;
+}
+
+
+    td {
+        border: 1px solid #d1d5db; padding: 8px 12px;
+        text-align: center; background: #f9fafb;
+    }
+    .sums { margin-top: 20px; font-family: monospace; }
+    .variant { margin-top: 30px; }
+    .variant h3 { text-align: center; margin-bottom: 10px; color: #1e293b; }
+    @media (max-width: 768px) {
+        .table-container { overflow-x: auto; }
+        td { padding: 6px; font-size: 0.85rem; }
+    }
+</style>
+</head>
+
+<body>
+<div class="container">
+    <h2>Your Vedic, Arab & Cinese Yantra from Date of Birth</h2>
+    <label for="dob">Enter Date of Birth:</label>
+    <input type="date" id="dob">
+    <button onclick="generateFromDOB()">Create Your Yantra</button>
+    <div align="center" id="result"></div>
+	<br/>
+        <div><a href="https://zodiaclab.github.io/microapps/" style="color:var(--accent1);text-decoration:none">← Back / Home</a></div>
+    </div>
+<br/><br/>
+<div class="button-container">
+<button class="print-btn" onclick="printPage()">🖨️ Print / Save as PDF</button>
+</div>
+
+<script>
+// ===== Utility Functions =====
+function sumToSingleDigit(num) {
+    while (num > 9) {
+        num = num.toString().split('').reduce((a, b) => a + Number(b), 0);
+    }
+    return num;
+}
+
+// ===== Numeral Conversions =====
+function toHindi(num) {
+    const map = ['०','१','२','३','४','५','६','७','८','९'];
+    return num.toString().split('').map(d => map[d]).join('');
+}
+function toArabic(num) {
+    const map = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
+    return num.toString().split('').map(d => map[d]).join('');
+}
+function toChinese(num) {
+    const digits = ['零','一','二','三','四','五','六','七','八','九'];
+    if (num < 10) return digits[num];
+    let str = "";
+    for (let d of num.toString()) str += digits[d];
+    return str;
+}
+function toTamil(num) {
+    const digits = ['o','௧','௨','௩','௪','௫','௬','௭','௮','௯','௰'];
+    if (num < 10) return digits[num];
+    let str = "";
+    for (let d of num.toString()) str += digits[d];
+    return str;
+}
+
+
+
+// ===== Magic Square Generators =====
+function generateOdd(n) {
+    let m = Array.from({ length: n }, () => Array(n).fill(0));
+    let num = 1;
+    let i = 0, j = Math.floor(n / 2);
+    while (num <= n * n) {
+        m[i][j] = num++;
+        let ni = (i - 1 + n) % n;
+        let nj = (j + 1) % n;
+        if (m[ni][nj] !== 0) {
+            i = (i + 1) % n;
+        } else {
+            i = ni; j = nj;
+        }
+    }
+    return m;
+}
+function generateDoublyEven(n) {
+    let m = Array.from({ length: n }, () => Array(n).fill(0));
+    let num = 1;
+    let nSq = n * n;
+    for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+            m[i][j] = num++;
+        }
+    }
+    for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+            if ((i % 4 === j % 4) || ((i % 4) + (j % 4) === 3)) {
+                m[i][j] = nSq + 1 - m[i][j];
+            }
+        }
+    }
+    return m;
+}
+function generateSinglyEven(n) {
+    let half = n / 2;
+    let s = half * half;
+    let small = generateOdd(half);
+    let big = Array.from({ length: n }, () => Array(n).fill(0));
+
+    for (let i = 0; i < half; i++) {
+        for (let j = 0; j < half; j++) {
+            let a = small[i][j];
+            big[i][j] = a;
+            big[i][j + half] = a + 2 * s;
+            big[i + half][j] = a + 3 * s;
+            big[i + half][j + half] = a + s;
+        }
+    }
+
+    let k = (half - 1) / 2;
+    for (let col = 0; col < k; col++) {
+        for (let row = 0; row < half; row++) {
+            let tmp = big[row][col];
+            big[row][col] = big[row + half][col];
+            big[row + half][col] = tmp;
+        }
+    }
+
+    let colsToSwap = k - 1;
+    if (colsToSwap > 0) {
+        let start = half - colsToSwap;
+        for (let col = start; col < half; col++) {
+            let gcol = col + half;
+            for (let row = 0; row < half; row++) {
+                let tmp = big[row][gcol];
+                big[row][gcol] = big[row + half][gcol];
+                big[row + half][gcol] = tmp;
+            }
+        }
+    }
+
+    let mid = Math.floor(half / 2);
+    {
+        let tmp = big[mid][0];
+        big[mid][0] = big[mid + half][0];
+        big[mid + half][0] = tmp;
+    }
+    {
+        let tmp = big[mid][mid];
+        big[mid][mid] = big[mid + half][mid];
+        big[mid + half][mid] = tmp;
+    }
+    return big;
+}
+
+function addOffset(m, startNum) {
+    let offset = startNum - 1;
+    if (offset === 0) return;
+    let n = m.length;
+    for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+            m[i][j] += offset;
+        }
+    }
+}
+
+// ===== Table Builders =====
+function buildTable(m, converter) {
+    let html = "<div class='table-container'><table>";
+    m.forEach(row => {
+        html += "<tr>" + row.map(v => `<td>${converter ? converter(v) : v}</td>`).join("") + "</tr>";
+    });
+    html += "</table></div>";
+    return html;
+}
+function checkSums(m) {
+    let n = m.length;
+    let out = "<div class='sums'>";
+    let d1 = 0, d2 = 0;
+    for (let i = 0; i < n; i++) {
+        let rs = 0, cs = 0;
+        for (let j = 0; j < n; j++) {
+            rs += m[i][j];
+            cs += m[j][i];
+        }
+        out += `Row ${i + 1} Sum = ${rs}<br>`;
+        out += `Column ${i + 1} Sum = ${cs}<br>`;
+        d1 += m[i][i];
+        d2 += m[i][n - 1 - i];
+    }
+    out += `Main Diagonal Sum = ${d1}<br>`;
+    out += `Secondary Diagonal Sum = ${d2}<br>`;
+    out += "</div>";
+    return out;
+}
+
+// ===== Main Function =====
+function generateFromDOB() {
+    let dob = document.getElementById("dob").value;
+    if (!dob) {
+        alert("Please select a date of birth");
+        return;
+    }
+
+    // Full DOB single digit -> N
+    let allDigitsSum = dob.replace(/[^0-9]/g, '')
+        .split('').reduce((a, b) => a + Number(b), 0);
+    let n = sumToSingleDigit(allDigitsSum);
+
+    // Day single digit -> startNum
+    let day = parseInt(dob.split("-")[2], 10);
+    let startNum = sumToSingleDigit(day);
+
+    if (n < 3) {
+       n = 3
+    }
+
+    let magic;
+    if (n % 2 === 1) {
+        magic = generateOdd(n);
+    } else if (n % 4 === 0) {
+        magic = generateDoublyEven(n);
+    } else {
+        magic = generateSinglyEven(n);
+    }
+    addOffset(magic, startNum);
+
+    document.getElementById("result").innerHTML =
+        `<b>Divine yantra Size (from DOB sum):</b> ${n}<br>` +
+        `<b>Starting Number (from Day sum):</b> ${startNum}<br><br>` +
+        `<div class="variant"><h3>Numeric Yantra</h3>${buildTable(magic)}</div>` +
+        `<div class="variant"><h3>Sanskrit (Hindi)-Devanagiri Yantra</h3>${buildTable(magic, toHindi)}</div>` +
+        `<div class="variant"><h3>Arabic Yantra</h3>${buildTable(magic, toArabic)}</div>` +
+        `<div class="variant"><h3>Chinese Yantra</h3>${buildTable(magic, toChinese)}</div>` +
+        `<div class="variant"><h3>Tamil Yantra</h3>${buildTable(magic, toTamil)}</div>` +
+
+        checkSums(magic);
+}
+
+function printPage() {
+  window.print(); // opens print dialog (user can select "Save as PDF")
+}
+
+</script>
+</body>
+</html>
