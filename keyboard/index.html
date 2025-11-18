@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Responsive Musical Keyboard (WebAudio)</title>
+<style>
+  :root{
+    --bg:#0f1724; --panel:#0b1220; --white:#f6f7fb; --muted:#9aa4b2;
+    --keyWhite:#fff; --keyBlack:#222; --accent:#2dd4bf;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh; display:flex; gap:18px; align-items:center; justify-content:center;
+    background: linear-gradient(180deg,#071023 0%, #082033 100%); color:var(--white); font-family:Inter,system-ui,Segoe UI,Roboto,Arial;
+    padding:18px;
+  }
+
+  .wrap{
+    width:100%;
+    max-width:1100px;
+    background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+    border-radius:12px;
+    padding:16px;
+    box-shadow:0 8px 40px rgba(2,6,23,0.6);
+  }
+
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+  h1{font-size:1.05rem;margin:0}
+  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+  .control {
+    background:transparent;border:1px solid rgba(255,255,255,0.06);
+    padding:8px;border-radius:8px;color:var(--white);display:inline-flex;gap:8px;align-items:center;
+  }
+  .control label{font-size:0.85rem;color:var(--muted)}
+  .btn{cursor:pointer;padding:6px 10px;border-radius:8px;border:none;background:var(--accent);color:#04202a;font-weight:600}
+  .small{font-size:0.85rem;color:var(--muted)}
+
+  /* Keyboard container - horizontally scrollable on small screens */
+  .keyboard-wrap{
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border-radius:10px;padding:12px;overflow:hidden;
+  }
+  .keys{
+    display:flex;
+    align-items:flex-end;
+    gap:0;
+    user-select:none;
+    touch-action:none; /* important for multi-touch */
+    -webkit-user-select:none;
+    -webkit-touch-callout:none;
+    padding-bottom:6px;
+    /* allow horizontal scroll on small screens */
+    overflow-x:auto;
+    scrollbar-width:thin;
+  }
+
+  /* white keys */
+  .key{
+    position:relative;
+    flex: 0 0 56px; /* base width */
+    height:200px;
+    border:1px solid rgba(0,0,0,0.12);
+    background:var(--keyWhite);
+    border-radius:6px;
+    margin-right:1px;
+    display:flex;align-items:flex-end;justify-content:center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    color:#101218;font-weight:600;
+  }
+  .key.label{font-size:13px;padding-bottom:10px}
+  .key.active{background:linear-gradient(180deg,#ffe6b3,#ffd27a);transform:translateY(2px)}
+  /* black keys */
+  .key.black{
+    position:relative;
+    flex: 0 0 36px;
+    height:130px;
+    background:var(--keyBlack);
+    color:#fff;
+    margin-left:-18px;
+    margin-right:-18px;
+    z-index:3;
+    border-radius:6px;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.6);
+    display:flex;align-items:flex-end;justify-content:center;
+  }
+  .key.black.active{background:#333; transform:translateY(2px);}
+
+  /* responsive: larger keys on small screens, but horizontally scroll */
+  @media (max-width:700px){
+    .key{flex: 0 0 72px; height:240px}
+    .key.black{flex: 0 0 44px; height:150px; margin-left:-22px; margin-right:-22px}
+  }
+
+  /* extra: show octave label bottom */
+  .noteLabel{font-size:12px;padding:8px 4px;color:rgba(0,0,0,0.65)}
+  .black .noteLabel{color:#fff}
+
+  /* bottom help */
+  .help{margin-top:12px;font-size:0.9rem;color:var(--muted)}
+  .kbd{display:inline-block;background:rgba(255,255,255,0.05);padding:4px 8px;border-radius:6px;margin-left:6px}
+
+  /* make keyboard occupy full width if many keys */
+  .keys:focus{outline:none}
+</style>
+</head>
+<body>
+
+<div class="wrap" role="application" aria-label="Musical keyboard">
+  <header>
+    <h1>🎹 Responsive Musical Keyboard — WebAudio</h1>
+    <div class="controls">
+      <div class="control">
+        <label>Octave</label>
+        <button id="octDown" class="btn" title="Lower octave">−</button>
+        <div id="octLabel" class="small" style="min-width:28px;text-align:center">4</div>
+        <button id="octUp" class="btn" title="Higher octave">+</button>
+      </div>
+
+      <div class="control">
+        <label>Volume</label>
+        <input id="volume" type="range" min="0" max="1" step="0.01" value="0.60" />
+      </div>
+
+      <div class="control">
+        <label>Sustain</label>
+        <input id="sustain" type="checkbox" />
+      </div>
+
+      <div class="control" style="padding:6px">
+        <button id="allStop" class="btn">Stop All</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="keyboard-wrap">
+    <div id="keys" class="keys" tabindex="0" aria-label="Piano keys (click or touch to play)"></div>
+  </div>
+
+  <div class="help">
+    Play with mouse/touch or use your computer keyboard. Mapped keys: <span class="kbd">Z X C V B N M , . /</span> (white) and <span class="kbd">S D G H J</span> (black) — this is one layout starting at C. Use octave ± to shift. Swipe horizontally on mobile.
+  </div>
+<div align=center><a href="https://zodiaclab.github.io/microapps/" style="color:var(--accent1);text-decoration:none">← Back / Home</a></div>
+
+</div>
+
+<script>
+/* ====== Simple WebAudio synth keyboard ====== */
+
+/* Note map for one octave starting at C (C4 = midi 60) */
+/* We'll build a sequence of notes (including black keys) */
+const NOTE_SEQUENCE = [
+  {name:'C',  key:'Z',  type:'white',  semitone:0},
+  {name:'C#', key:'S',  type:'black',  semitone:1},
+  {name:'D',  key:'X',  type:'white',  semitone:2},
+  {name:'D#', key:'D',  type:'black',  semitone:3},
+  {name:'E',  key:'C',  type:'white',  semitone:4},
+  {name:'F',  key:'V',  type:'white',  semitone:5},
+  {name:'F#', key:'G',  type:'black',  semitone:6},
+  {name:'G',  key:'B',  type:'white',  semitone:7},
+  {name:'G#', key:'H',  type:'black',  semitone:8},
+  {name:'A',  key:'N',  type:'white',  semitone:9},
+  {name:'A#', key:'J',  type:'black',  semitone:10},
+  {name:'B',  key:'M',  type:'white',  semitone:11},
+  // extend to next C for completeness (white)
+  {name:'C2', key:',', type:'white', semitone:12}
+];
+
+const keysContainer = document.getElementById('keys');
+const octLabel = document.getElementById('octLabel');
+let baseOctave = 4; // middle C = C4
+octLabel.textContent = baseOctave;
+
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+const master = {volume: parseFloat(document.getElementById('volume').value)};
+
+/* active notes map: identifier -> {osc, gain, env} */
+const activeNotes = new Map();
+
+/* utility: midi number to frequency */
+function midiToFreq(m){
+  return 440 * Math.pow(2, (m - 69) / 12);
+}
+
+/* create key elements */
+function buildKeys(octave){
+  keysContainer.innerHTML = '';
+  // We'll render a little wider range: from octave-1 to octave+1 maybe multiple octaves span
+  // For simplicity, render 2 octaves starting at chosen base octave (C)
+  const octavesToShow = 2; // adjustable
+  for (let o=0;o<octavesToShow;o++){
+    for (const n of NOTE_SEQUENCE){
+      const isBlack = n.type === 'black';
+      const el = document.createElement('div');
+      el.className = 'key' + (isBlack ? ' black' : ' ');
+      el.dataset.name = n.name.replace('2',''); // label small
+      // compute semitone offset from C of base octave
+      const semitone = n.semitone + o*12;
+      // midi number for this key:
+      const midi = 12 * (octave + o) + semitone; // C at octave = 12*octave
+      el.dataset.midi = midi;
+      // show label
+      const label = document.createElement('div');
+      label.className = 'noteLabel';
+      const displayName = n.name.replace('2','');
+      label.innerHTML = `<div style="font-size:12px">${displayName}</div><div style="font-size:11px;color:rgba(255,255,255,0.6)">${String(midi)}</div>`;
+      el.appendChild(label);
+      // attach pointer handlers
+      attachPointerHandlers(el);
+      keysContainer.appendChild(el);
+    }
+  }
+}
+
+/* Attach pointer events to a key element (works for multi-touch) */
+function attachPointerHandlers(el){
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    el.setPointerCapture(e.pointerId);
+    const id = `${e.pointerId}:${el.dataset.midi}`;
+    noteOn(Number(el.dataset.midi), id);
+  });
+  el.addEventListener('pointerup', e => {
+    e.preventDefault();
+    const id = `${e.pointerId}:${el.dataset.midi}`;
+    el.releasePointerCapture && el.releasePointerCapture(e.pointerId);
+    noteOff(Number(el.dataset.midi), id);
+  });
+  el.addEventListener('pointercancel', e => {
+    const id = `${e.pointerId}:${el.dataset.midi}`;
+    noteOff(Number(el.dataset.midi), id);
+  });
+  // also handle mouseleave while pressed
+  el.addEventListener('pointermove', e => {
+    // noop
+  });
+}
+
+/* start audio context on first interaction */
+function ensureAudioCtx(){
+  if (!audioCtx){
+    audioCtx = new AudioCtx();
+  }
+}
+
+/* play note */
+function noteOn(midi, id){
+  ensureAudioCtx();
+  if (activeNotes.has(id)) return;
+  const now = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = 9000;
+
+  osc.type = 'sine'; // smooth default (changeable)
+  osc.frequency.value = midiToFreq(midi);
+  // simple ADSR
+  gain.gain.value = 0;
+  const attack = 0.01;
+  const decay = 0.12;
+  const sustainLevel = document.getElementById('sustain').checked ? 0.7 : 0.4;
+  const release = 0.4;
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(master.volume, now + attack);
+  gain.gain.linearRampToValueAtTime(master.volume * sustainLevel, now + attack + decay);
+
+  osc.connect(filter);
+  filter.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  osc.start();
+  activeNotes.set(id, {osc,gain,filter,release});
+  highlightKey(midi, true);
+}
+
+/* stop note (release) */
+function noteOff(midi, id){
+  const obj = activeNotes.get(id);
+  if (!obj) return;
+  const now = audioCtx.currentTime;
+  obj.gain.gain.cancelScheduledValues(now);
+  obj.gain.gain.setValueAtTime(obj.gain.gain.value, now);
+  obj.gain.gain.linearRampToValueAtTime(0, now + obj.release);
+  // stop oscillator after release
+  setTimeout(() => {
+    try{
+      obj.osc.stop();
+      obj.osc.disconnect();
+      obj.gain.disconnect();
+      obj.filter.disconnect();
+    } catch(e){}
+  }, (obj.release + 0.05) * 1000);
+  activeNotes.delete(id);
+  highlightKey(midi, false);
+}
+
+/* highlight key element when active */
+function highlightKey(midi, on){
+  // find key elements with data-midi == midi
+  const list = Array.from(document.querySelectorAll('.key'));
+  for (const k of list){
+    if (Number(k.dataset.midi) === midi){
+      if (on) k.classList.add('active'); else k.classList.remove('active');
+    }
+  }
+}
+
+/* ALL STOP */
+document.getElementById('allStop').addEventListener('click', ()=>{
+  for (const id of Array.from(activeNotes.keys())){
+    const midi = Number(id.split(':')[1]);
+    noteOff(midi, id);
+  }
+});
+
+/* octave controls */
+document.getElementById('octUp').addEventListener('click', ()=>{
+  baseOctave = Math.min(7, baseOctave + 1);
+  octLabel.textContent = baseOctave;
+  buildKeys(baseOctave);
+});
+document.getElementById('octDown').addEventListener('click', ()=>{
+  baseOctave = Math.max(1, baseOctave - 1);
+  octLabel.textContent = baseOctave;
+  buildKeys(baseOctave);
+});
+
+/* volume control */
+document.getElementById('volume').addEventListener('input', (e)=>{
+  master.volume = parseFloat(e.target.value);
+});
+
+/* keyboard mapping for convenience: map computer keys to nearest note of first octave shown */
+const keyToMidi = {};
+(function prepareKeyMap(){
+  // build mapping from NOTE_SEQUENCE keys to midi numbers for baseOctave (will update on build)
+  // We'll rebuild mapping every time we build keys
+})();
+
+/* handle computer keyboard presses (with simple note-on/note-off) */
+const keyDownIds = new Map();
+window.addEventListener('keydown', (ev)=>{
+  const key = ev.key.toUpperCase();
+  // avoid repeat events
+  if (ev.repeat) return;
+  // find a key element with matching label (we set dataset name + maybe key mapping)
+  // Instead, derive mapping from NOTE_SEQUENCE's assigned keys (Z X C ...)
+  for (let octOffset=0; octOffset<2; octOffset++){
+    const seqIndex = NOTE_SEQUENCE.findIndex(n => n.key === key);
+    if (seqIndex >= 0){
+      // compute midi for that index in octave 0
+      const seq = NOTE_SEQUENCE[seqIndex];
+      const midi = 12*(baseOctave) + seq.semitone + octOffset*12;
+      const id = `kb:${key}:${octOffset}`;
+      if (!keyDownIds.has(id)){
+        noteOn(midi, id);
+        keyDownIds.set(id, midi);
+        break;
+      }
+    }
+  }
+});
+window.addEventListener('keyup', (ev)=>{
+  const key = ev.key.toUpperCase();
+  // release all ids involving this key
+  for (const id of Array.from(keyDownIds.keys())){
+    if (id.startsWith(`kb:${key}:`)){
+      const midi = keyDownIds.get(id);
+      noteOff(midi, id);
+      keyDownIds.delete(id);
+    }
+  }
+});
+
+/* build initial keys and ensure focus */
+buildKeys(baseOctave);
+keysContainer.focus();
+
+/* Prevent scrolling while touching piano on mobile - allow horizontal scroll on container though */
+let touching = false;
+keysContainer.addEventListener('touchstart', e => { touching = true; }, {passive:false});
+keysContainer.addEventListener('touchend', e => { touching = false; }, {passive:false});
+</script>
+</body>
+</html>
