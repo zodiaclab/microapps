@@ -75,6 +75,7 @@
     display:flex;align-items:flex-end;justify-content:center;
     box-shadow: 0 4px 12px rgba(0,0,0,0.25);
     color:#101218;font-weight:600;
+    transition: background .08s, transform .06s;
   }
   .key.label{font-size:13px;padding-bottom:10px}
   .key.active{background:linear-gradient(180deg,#ffe6b3,#ffd27a);transform:translateY(2px)}
@@ -119,15 +120,38 @@
   }
 
   /* extra: show octave label bottom */
-  .noteLabel{font-size:12px;padding:8px 4px;color:rgba(0,0,0,0.65)}
+  .noteLabel{font-size:12px;padding:8px 4px;color:rgba(0,0,0,0.65); pointer-events:none; text-align:center}
   .black .noteLabel{color:#fff}
+
+  .sargamLabel{font-size:12px;padding:4px 2px;color:var(--muted);position:absolute;top:6px;pointer-events:none}
 
   /* bottom help */
   .help{margin-top:12px;font-size:0.9rem;color:var(--muted)}
   .kbd{display:inline-block;background:rgba(255,255,255,0.05);padding:4px 8px;border-radius:6px;margin-left:6px}
 
+  /* Mobile-mode styling center */
+  .keyboard-wrap.mobile-mode { display:flex; justify-content:center; }
+  .keyboard-wrap.mobile-mode .keys { justify-content:center; }
+
   /* make keyboard occupy full width if many keys */
   .keys:focus{outline:none}
+
+/*------------*/
+/* Highlight effect for 2nd octave keys (same as first octave) */
+.key.active2 {
+  background: #ffa726 !important;
+  transform: scale(0.96);
+  box-shadow: 0 0 10px #ffa726;
+}
+
+/* If you use black keys in row 2 */
+.black.active2 {
+  background: #ffeb3b !important;
+  transform: scale(0.96);
+  box-shadow: 0 0 12px #ffeb3b;
+}
+
+/*----------------*/
 </style>
 </head>
 <body>
@@ -139,13 +163,13 @@
       <div class="control">
         <label>Octave</label>
         <button id="octDown" class="btn" title="Lower octave">−</button>
-        <div id="octLabel" class="small" style="min-width:28px;text-align:center">4</div>
+        <div id="octLabel" class="small" style="min-width:28px;text-align:center">5</div>
         <button id="octUp" class="btn" title="Higher octave">+</button>
       </div>
 
       <div class="control">
         <label>Volume</label>
-        <input id="volume" type="range" min="0" max="1" step="0.01" value="0.60" />
+        <input id="volume" type="range" min="0" max="1" step="0.01" value="0.70" />
       </div>
 
       <div class="control">
@@ -157,9 +181,35 @@
         <button id="allStop" class="btn">Stop All</button>
       </div>
 
-      <div class="control" style="padding:6px">
-        <button id="toggleView" class="btn" title="Toggle stacked/horizontal view">Toggle View</button>
+      <!-- NEW: Mobile toggle -->
+      <div class="control">
+        <label>Mobile 8-key</label>
+        <button id="mobileToggle" class="btn" title="Toggle mobile 8-key view">Auto</button>
       </div>
+
+      <!-- NEW: Sargam toggle -->
+      <div class="control">
+        <label>Sargam</label>
+        <button id="sargamToggle" class="btn">Off</button>
+      </div>
+
+      <!-- NEW: Key size slider -->
+      <div class="control">
+        <label>Key Size</label>
+        <input id="keySize" type="range" min="0.6" max="1.6" step="0.01" value="1" />
+      </div>
+
+      <!-- NEW: Recording controls -->
+      <div class="control" style="padding:6px">
+        <button id="recStart" class="btn" title="Start Recording">Record</button>
+      </div>
+      <div class="control" style="padding:6px">
+        <button id="recStop" class="btn" title="Stop Recording">Stop</button>
+      </div>
+      <div class="control" style="padding:6px">
+        <button id="recPlay" class="btn" title="Play Recording">Play</button>
+      </div>
+
     </div>
   </header>
 
@@ -168,16 +218,14 @@
   </div>
 
   <div class="help">
-    Play with mouse/touch or use your computer keyboard. Mapped keys: <span class="kbd">Z X C V B N M , . /</span> (white) and <span class="kbd">S D G H J</span> (black) — this is one layout starting at C. Use octave ± to shift. The keyboard auto-resizes to fit the container without scrollbars. Use Toggle View to stack keys vertically on mobile if you prefer.
+    Play with mouse/touch or use your computer keyboard. Mapped keys: <span class="kbd">Z X C V B N M , . /</span> (white) and <span class="kbd">S D G H J</span> (black) — this is one layout starting at C. Use octave ± to shift. The keyboard auto-resizes to fit the container without scrollbars. Mobile mode shows only the first octave (toggle Auto/On/Off).
   </div>
 <div align=center><a href="https://zodiaclab.github.io/microapps/" style="color:var(--accent);text-decoration:none">← Back / Home</a></div>
 
 </div>
 
 <script>
-/* ====== Simple WebAudio synth keyboard (modified to auto-fit width and provide stacked view) ====== */
-
-/* NOTE_SEQUENCE kept unchanged from your original */
+/* ====== Existing NOTE_SEQUENCE (unchanged) ====== */
 const NOTE_SEQUENCE = [
   {name:'C',  key:'Z',  type:'white',  semitone:0},
   {name:'C#', key:'S',  type:'black',  semitone:1},
@@ -197,15 +245,29 @@ const NOTE_SEQUENCE = [
 const keysContainer = document.getElementById('keys');
 const keyboardWrap = document.getElementById('keyboardWrap');
 const octLabel = document.getElementById('octLabel');
-let baseOctave = 4; // middle C = C4
+let baseOctave = 5; // middle C = C4
 octLabel.textContent = baseOctave;
 
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
 let audioCtx = null;
 const master = {volume: parseFloat(document.getElementById('volume').value)};
+let keySizeScale = parseFloat(document.getElementById('keySize').value);
 
-/* active notes map: identifier -> {osc, gain, env} */
+/* active notes map: identifier -> {osc, gain, filter, release} */
 const activeNotes = new Map();
+
+/* RECORDING */
+let isRecording = false;
+let recordStart = 0;
+let recordedEvents = []; // {type:'on'|'off', midi, t}
+
+/* SARGAM */
+let sargamOn = false;
+const SARGAM_MAP = { 'C':'Sa','D':'Re','E':'Ga','F':'Ma','G':'Pa','A':'Dha','B':'Ni','C2':'Sa' };
+
+/* MOBILE MODE: auto or manual */
+let mobileModeAuto = true; // Auto by width
+let mobileModeOn = false;   // forced on by user
 
 /* utility: midi number to frequency */
 function midiToFreq(m){
@@ -222,45 +284,61 @@ function buildKeys(octave){
       const el = document.createElement('div');
       el.className = 'key' + (isBlack ? ' black' : '');
       el.dataset.name = n.name.replace('2',''); // label small
+      el.dataset.semitone = n.semitone;
+      el.dataset.base = octave;
+      el.dataset.octave = String(octave + o); // which octave number
       const semitone = n.semitone + o*12;
       const midi = 12 * (octave + o) + semitone; // C at octave = 12*octave
       el.dataset.midi = midi;
+      // label container
       const label = document.createElement('div');
       label.className = 'noteLabel';
       const displayName = n.name.replace('2','');
       label.innerHTML = `<div style="font-size:12px">${displayName}</div><div style="font-size:11px;color:rgba(255,255,255,0.6)">${String(midi)}</div>`;
       el.appendChild(label);
+
+      // sargam label (hidden by default)
+      const sLabel = document.createElement('div');
+      sLabel.className = 'sargamLabel';
+      sLabel.textContent = SARGAM_MAP[ n.name.replace('2','') ] || '';
+      sLabel.style.display = 'none';
+      el.appendChild(sLabel);
+
       attachPointerHandlers(el);
       keysContainer.appendChild(el);
     }
   }
-  // after building, adjust sizes to fit container without scrollbars
+  // after building, apply mobile visibility & sizing
+  applyMobileVisibility();
   requestAnimationFrame(adjustKeySizes);
 }
 
-/* Attach pointer events to a key element (works for multi-touch) */
+/* pointer handlers */
 function attachPointerHandlers(el){
   el.addEventListener('pointerdown', e => {
     e.preventDefault();
     el.setPointerCapture(e.pointerId);
     const id = `${e.pointerId}:${el.dataset.midi}`;
     noteOn(Number(el.dataset.midi), id);
+    if (isRecording) recordEvent('on', Number(el.dataset.midi));
   });
   el.addEventListener('pointerup', e => {
     e.preventDefault();
     const id = `${e.pointerId}:${el.dataset.midi}`;
     el.releasePointerCapture && el.releasePointerCapture(e.pointerId);
     noteOff(Number(el.dataset.midi), id);
+    if (isRecording) recordEvent('off', Number(el.dataset.midi));
   });
   el.addEventListener('pointercancel', e => {
     const id = `${e.pointerId}:${el.dataset.midi}`;
     noteOff(Number(el.dataset.midi), id);
+    if (isRecording) recordEvent('off', Number(el.dataset.midi));
   });
-  // pointerleave: if pointer leaves while pressed, release
   el.addEventListener('pointerleave', e => {
     if (e.pressure > 0) {
       const id = `${e.pointerId}:${el.dataset.midi}`;
       noteOff(Number(el.dataset.midi), id);
+      if (isRecording) recordEvent('off', Number(el.dataset.midi));
     }
   });
 }
@@ -283,24 +361,23 @@ function noteOn(midi, id){
   filter.type = 'lowpass';
   filter.frequency.value = 9000;
 
-  osc.type = 'sine'; // smooth default (changeable)
+  osc.type = 'sine';
   osc.frequency.value = midiToFreq(midi);
-  // simple ADSR
-  gain.gain.value = 0;
   const attack = 0.01;
   const decay = 0.12;
   const sustainLevel = document.getElementById('sustain').checked ? 0.7 : 0.4;
   const release = 0.4;
+
   gain.gain.setValueAtTime(0, now);
-  gain.gain.linearRampToValueAtTime(master.volume, now + attack);
-  gain.gain.linearRampToValueAtTime(master.volume * sustainLevel, now + attack + decay);
+  gain.gain.linearRampToValueAtTime(master.volume * keySizeScale, now + attack);
+  gain.gain.linearRampToValueAtTime(master.volume * sustainLevel * keySizeScale, now + attack + decay);
 
   osc.connect(filter);
   filter.connect(gain);
   gain.connect(audioCtx.destination);
 
   osc.start();
-  activeNotes.set(id, {osc,gain,filter,release});
+  activeNotes.set(id, {osc,gain,filter,release, midi});
   highlightKey(midi, true);
 }
 
@@ -312,7 +389,6 @@ function noteOff(midi, id){
   obj.gain.gain.cancelScheduledValues(now);
   obj.gain.gain.setValueAtTime(obj.gain.gain.value, now);
   obj.gain.gain.linearRampToValueAtTime(0, now + obj.release);
-  // stop oscillator after release
   setTimeout(() => {
     try{
       obj.osc.stop();
@@ -360,7 +436,88 @@ document.getElementById('volume').addEventListener('input', (e)=> {
   master.volume = parseFloat(e.target.value);
 });
 
-/* keyboard mapping for convenience: map computer keys to nearest note of first octave shown */
+/* key size control */
+document.getElementById('keySize').addEventListener('input', (e)=>{
+  keySizeScale = parseFloat(e.target.value);
+  adjustKeySizes();
+});
+
+/* SARGAM toggle */
+document.getElementById('sargamToggle').addEventListener('click', ()=>{
+  sargamOn = !sargamOn;
+  document.getElementById('sargamToggle').textContent = sargamOn ? 'On' : 'Off';
+  // show/hide sargam labels
+  document.querySelectorAll('.key').forEach(k => {
+    const s = k.querySelector('.sargamLabel');
+    if (s) s.style.display = sargamOn ? 'block' : 'none';
+  });
+});
+
+/* MOBILE toggle (Auto / On / Off) */
+const mobileToggleBtn = document.getElementById('mobileToggle');
+let mobileToggleState = 'auto'; // 'auto' | 'on' | 'off'
+mobileToggleBtn.addEventListener('click', ()=>{
+  if (mobileToggleState === 'auto') mobileToggleState = 'on';
+  else if (mobileToggleState === 'on') mobileToggleState = 'off';
+  else mobileToggleState = 'auto';
+  mobileToggleBtn.textContent = mobileToggleState === 'auto' ? 'Auto' : (mobileToggleState === 'on' ? 'On' : 'Off');
+  applyMobileVisibility();
+});
+
+/* RECORD controls */
+document.getElementById('recStart').addEventListener('click', ()=>{
+  isRecording = true;
+  recordedEvents = [];
+  recordStart = performance.now();
+  document.getElementById('recStart').disabled = true;
+  document.getElementById('recStop').disabled = false;
+});
+document.getElementById('recStop').addEventListener('click', ()=>{
+  isRecording = false;
+  document.getElementById('recStart').disabled = false;
+  document.getElementById('recStop').disabled = true;
+});
+document.getElementById('recPlay').addEventListener('click', ()=>{
+  playRecording();
+});
+
+/* record helper */
+function recordEvent(type, midi){
+  if (!isRecording) return;
+  recordedEvents.push({type, midi, t: performance.now() - recordStart});
+}
+
+/* play recording */
+function playRecording(){
+  if (!recordedEvents.length) return;
+  // stop any active notes first
+  document.getElementById('allStop').click();
+  const start = performance.now();
+  for (const ev of recordedEvents){
+    const when = ev.t;
+    if (ev.type === 'on'){
+      setTimeout(()=>{
+        const id = `play:${ev.midi}:${when}`;
+        noteOn(ev.midi, id);
+      }, when);
+    } else {
+      setTimeout(()=>{
+        // find active play id(s) matching midi and stop them
+        // we'll stop any activeNotes where obj.midi === ev.midi and id startsWith 'play:'
+        for (const id of Array.from(activeNotes.keys())){
+          if (id.startsWith('play:')){
+            const obj = activeNotes.get(id);
+            if (obj && obj.midi === ev.midi){
+              noteOff(ev.midi, id);
+            }
+          }
+        }
+      }, when);
+    }
+  }
+}
+
+/* keyboard mapping for convenience */
 const keyDownIds = new Map();
 window.addEventListener('keydown', (ev)=> {
   const key = ev.key.toUpperCase();
@@ -368,13 +525,13 @@ window.addEventListener('keydown', (ev)=> {
   // find sequence index for this key
   const seqIndex = NOTE_SEQUENCE.findIndex(n => n.key === key);
   if (seqIndex >= 0){
-    // use first octave (octave offset 0) to compute midi
     const seq = NOTE_SEQUENCE[seqIndex];
     const midi = 12*(baseOctave) + seq.semitone;
     const id = `kb:${key}`;
     if (!keyDownIds.has(id)){
       noteOn(midi, id);
       keyDownIds.set(id, midi);
+      if (isRecording) recordEvent('on', midi);
     }
   }
 });
@@ -385,6 +542,7 @@ window.addEventListener('keyup', (ev)=> {
     const midi = keyDownIds.get(id);
     noteOff(midi, id);
     keyDownIds.delete(id);
+    if (isRecording) recordEvent('off', midi);
   }
 });
 
@@ -392,32 +550,64 @@ window.addEventListener('keyup', (ev)=> {
 buildKeys(baseOctave);
 keysContainer.focus();
 
-/* Prevent scrolling while touching piano on mobile - but we need container to not scroll */
+/* MOBILE: compute whether to use mobile mode (auto) */
+function shouldUseMobileAuto(){
+  return window.innerWidth <= 600;
+}
+
+/* Apply mobile visibility and center when mobile-mode */
+function applyMobileVisibility(){
+  // decide final mobile mode
+  const useMobile = (mobileToggleState === 'on') || (mobileToggleState === 'auto' && shouldUseMobileAuto());
+  if (useMobile){
+    keyboardWrap.classList.add('mobile-mode');
+  } else {
+    keyboardWrap.classList.remove('mobile-mode');
+  }
+
+  // show/hide keys: in mobile mode show only keys belonging to the first displayed octave (baseOctave)
+  const keyEls = Array.from(keysContainer.children);
+  if (useMobile){
+    keyEls.forEach(k => {
+      // show only keys whose dataset.octave == baseOctave (string)
+      if (k.dataset.octave === String(baseOctave)){
+        k.style.display = ''; // show
+      } else {
+        k.style.display = 'none';
+      }
+    });
+  } else {
+    keyEls.forEach(k => k.style.display = '');
+  }
+
+  // show sargam labels if enabled (they remain attached)
+  document.querySelectorAll('.key').forEach(k => {
+    const s = k.querySelector('.sargamLabel');
+    if (s) s.style.display = sargamOn ? 'block' : 'none';
+  });
+
+  // final adjust sizes
+  adjustKeySizes();
+}
+
+/* Prevent scrolling while touching piano on mobile */
 let touching = false;
 keysContainer.addEventListener('touchstart', e => { touching = true; }, {passive:false});
 keysContainer.addEventListener('touchend', e => { touching = false; }, {passive:false});
 
 /* ---------------------------
    AUTO-ADJUST KEY SIZES (NO SCROLLBAR)
-   Logic:
-   - Count white keys in the container
-   - Compute whiteKeyWidth = floor((containerWidth - totalGap) / whiteKeyCount)
-   - Set each white key flex-basis to that width
-   - Set each black key width = Math.round(whiteKeyWidth * 0.62)
-   - For stacked (vertical) layout: let CSS handle full-width; we still set heights if needed
-   ---------------------------*/
+---------------------------*/
 function adjustKeySizes(){
   const wrapRect = keyboardWrap.getBoundingClientRect();
   const containerWidth = Math.max(100, Math.floor(wrapRect.width));
   const isStacked = keyboardWrap.classList.contains('stacked');
-  const keyEls = Array.from(keysContainer.children);
+  const keyEls = Array.from(keysContainer.children).filter(k => k.style.display !== 'none');
 
   if (isStacked){
-    // In stacked mode, just ensure keys fill width; let CSS manage heights
     keyEls.forEach(k => {
       k.style.flex = '0 0 auto';
       k.style.width = '100%';
-      // black keys narrower overlay
       if (k.classList.contains('black')){
         k.style.width = '28%';
         k.style.marginLeft = '-14%';
@@ -430,27 +620,31 @@ function adjustKeySizes(){
     return;
   }
 
-  // Horizontal mode - fit within width
-  // Count white keys
+  // count white keys among visible keys only
   const whiteKeys = keyEls.filter(k => !k.classList.contains('black'));
   const blackKeys = keyEls.filter(k => k.classList.contains('black'));
-  const gaps = Math.max(0, whiteKeys.length - 1); // approx 1px gaps (margin-right:1px)
-  const gapTotal = gaps * 1; // px
-  // compute integer width per white key
-  const whiteWidth = Math.max(28, Math.floor((containerWidth - gapTotal) / whiteKeys.length));
-  // apply widths
+  const whiteCount = Math.max(1, whiteKeys.length);
+  const gaps = Math.max(0, whiteCount - 1);
+  const gapTotal = gaps * 1;
+  // compute width per white key, factoring keySizeScale
+  const rawWidth = Math.floor((containerWidth - gapTotal) / whiteCount);
+  const whiteWidth = Math.max(28, Math.floor(rawWidth * keySizeScale));
+  // if total width exceeds container, reduce proportionally
+  const totalNeeded = whiteWidth * whiteCount + gapTotal;
+  let finalWhiteWidth = whiteWidth;
+  if (totalNeeded > containerWidth){
+    finalWhiteWidth = Math.max(28, Math.floor((containerWidth - gapTotal) / whiteCount));
+  }
   whiteKeys.forEach(k => {
-    k.style.flex = `0 0 ${whiteWidth}px`;
-    k.style.width = `${whiteWidth}px`;
+    k.style.flex = `0 0 ${finalWhiteWidth}px`;
+    k.style.width = `${finalWhiteWidth}px`;
     k.style.marginRight = '1px';
     k.style.marginLeft = '0';
   });
-  // black key width ~ 62% of white
-  const blackWidth = Math.max(18, Math.round(whiteWidth * 0.62));
+  const blackWidth = Math.max(18, Math.round(finalWhiteWidth * 0.62));
   blackKeys.forEach(k => {
     k.style.flex = `0 0 ${blackWidth}px`;
     k.style.width = `${blackWidth}px`;
-    // negative margins to overlay between whites (centered)
     const neg = Math.round(blackWidth / 2);
     k.style.marginLeft = `-${neg}px`;
     k.style.marginRight = `-${neg}px`;
@@ -461,23 +655,131 @@ function adjustKeySizes(){
 let resizeTimer = null;
 function onResizeDebounced(){
   clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(()=> adjustKeySizes(), 80);
+  resizeTimer = setTimeout(()=> {
+    applyMobileVisibility();
+    adjustKeySizes();
+  }, 100);
 }
 window.addEventListener('resize', onResizeDebounced);
 
-/* Toggle view (stacked / horizontal) */
-document.getElementById('toggleView').addEventListener('click', ()=> {
-  keyboardWrap.classList.toggle('stacked');
-  // small delay to let CSS apply, then adjust sizes
-  setTimeout(() => adjustKeySizes(), 50);
-});
-
 /* Also adjust after CSS/fonts load and after initial build */
-window.addEventListener('load', ()=> adjustKeySizes());
-setTimeout(()=> adjustKeySizes(), 120);
+window.addEventListener('load', ()=> { applyMobileVisibility(); adjustKeySizes(); });
+setTimeout(()=> { applyMobileVisibility(); adjustKeySizes(); }, 160);
 
 /* Clean up focus behavior */
 keysContainer.addEventListener('focus', ()=> { /* nothing, keep focus */ });
+
+//-----Second set --------------//
+/* ===== SECOND KEYBOARD ROW (Option B) ===== */
+
+// mapping for second octave
+const SECOND_ROW_WHITE = {
+  'Q': 0,  // C
+  'W': 2,  // D
+  'E': 4,  // E
+  'R': 5,  // F
+  'T': 7,  // G
+  'Y': 9,  // A
+  'U': 11  // B
+};
+
+const SECOND_ROW_BLACK = {
+  '2': 1,   // C#
+  '3': 3,   // D#
+  '5': 6,   // F#
+  '6': 8,   // G#
+  '7': 10   // A#
+};
+//--------
+const keyMap2 = {
+  "q": "C5",
+  "2": "C#5",
+  "w": "D5",
+  "3": "D#5",
+  "e": "E5",
+  "r": "F5",
+  "5": "F#5",
+  "t": "G5",
+  "6": "G#5",
+  "y": "A5",
+  "7": "A#5",
+  "u": "B5"
+};
+//-----------
+window.addEventListener('keydown', ev => {
+  const key = ev.key.toUpperCase();
+  if (ev.repeat) return;
+
+  // FIRST OCTAVE (existing behavior)
+  const seqIndex = NOTE_SEQUENCE.findIndex(n => n.key === key);
+  if (seqIndex >= 0) {
+    const seq = NOTE_SEQUENCE[seqIndex];
+    const midi = 12 * baseOctave + seq.semitone;
+    const id = `kb:${key}`;
+    if (!keyDownIds.has(id)) {
+      noteOn(midi, id);
+      keyDownIds.set(id, midi);
+    }
+    return;
+  }
+
+  // SECOND OCTAVE (new)
+  if (SECOND_ROW_WHITE[key] !== undefined) {
+    const midi = 12 * (baseOctave + 1) + SECOND_ROW_WHITE[key];
+    const id = `kb2:${key}`;
+    if (!keyDownIds.has(id)) {
+      noteOn(midi, id);
+      keyDownIds.set(id, midi);
+    }
+  }
+  else if (SECOND_ROW_BLACK[key] !== undefined) {
+    const midi = 12 * (baseOctave + 1) + SECOND_ROW_BLACK[key];
+    const id = `kb2:${key}`;
+    if (!keyDownIds.has(id)) {
+      noteOn(midi, id);
+      keyDownIds.set(id, midi);
+    }
+  }
+});
+
+window.addEventListener('keyup', ev => {
+  const key = ev.key.toUpperCase();
+
+  const id1 = `kb:${key}`;
+  const id2 = `kb2:${key}`;
+
+  if (keyDownIds.has(id1)) {
+    const midi = keyDownIds.get(id1);
+    noteOff(midi, id1);
+    keyDownIds.delete(id1);
+  }
+
+  if (keyDownIds.has(id2)) {
+    const midi = keyDownIds.get(id2);
+    noteOff(midi, id2);
+    keyDownIds.delete(id2);
+  }
+});
+
+//-----
+document.addEventListener("keydown", (e) => {
+  const note = keyMap2[e.key.toLowerCase()];
+  if (note) {
+    const el = document.querySelector(`[data-note="${note}"]`);
+    if (el) el.classList.add("active2");
+  }
+});
+
+document.addEventListener("keyup", (e) => {
+  const note = keyMap2[e.key.toLowerCase()];
+  if (note) {
+    const el = document.querySelector(`[data-note="${note}"]`);
+    if (el) el.classList.remove("active2");
+  }
+});
+//---------
+
+// -----------second set -------------//
 
 </script>
 </body>
