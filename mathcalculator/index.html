@@ -550,7 +550,11 @@ function focusDisplay() {
   display.setSelectionRange(len, len); // Moves caret to end
 }
 
-openBtn && (openBtn.onclick = () => { modal.style.display = 'flex'; display.value = ''; focusDisplay(); });
+openBtn && (openBtn.onclick = () => { 
+  modal.style.display = 'flex'; 
+  display.value = ''; 
+  //focusDisplay(); 
+});
 closeBtn.onclick = () => modal.style.display = 'none';
 modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
 
